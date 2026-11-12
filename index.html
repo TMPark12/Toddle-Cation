@@ -26,6 +26,7 @@
         <div class="heading">
           <h1 id="feelings-heading" tabindex="-1">How do you feel?</h1>
           <p class="subtitle">Pick the face that feels like you.</p>
+          <p class="privacy-notice">With location permission, your check-in and location will be saved on this device.</p>
           <button class="sound" type="button" data-speech="How do you feel?" aria-label="Listen to the question: How do you feel?">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15 9a5 5 0 0 1 0 6M18 6a9 9 0 0 1 0 12"/></svg> Hear the question
           </button>
@@ -64,8 +65,24 @@
         <button class="back" id="back" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg> Back to feelings</button>
       </section>
     </main>
-    <footer>Made for little feelings and big conversations.</footer>
+    <footer><button class="history-button" id="open-history" type="button">Saved check-ins</button><br>Made for little feelings and big conversations.</footer>
   </div>
+  <dialog class="detail-dialog" id="location-dialog" aria-labelledby="location-heading" aria-describedby="location-description">
+    <h2 id="location-heading">Save this check-in?</h2>
+    <p id="location-description">An adult can allow location to save the feeling, color, local date and time, and device location on this device. Location is required to save.</p>
+    <p class="dialog-status" id="location-status" role="status" aria-live="polite"></p>
+    <button class="close-thanks" id="save-check-in" type="button">Allow location and save</button>
+    <button class="dialog-secondary" id="cancel-save" type="button">Cancel</button>
+  </dialog>
+  <dialog class="detail-dialog" id="history-dialog" aria-labelledby="history-heading">
+    <h2 id="history-heading">Saved check-ins</h2>
+    <p>These are stored in this browser on this device, including location.</p>
+    <p class="dialog-status" id="history-status" role="status" aria-live="polite"></p>
+    <ol class="history-list" id="history-list"></ol>
+    <button class="dialog-secondary" id="download-history" type="button">Download CSV</button>
+    <button class="dialog-secondary" id="clear-history" type="button">Clear saved check-ins</button>
+    <button class="close-thanks" id="close-history" type="button">Done</button>
+  </dialog>
   <dialog id="thanks" aria-labelledby="thanks-heading">
     <span class="thank-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></span>
     <h2 id="thanks-heading"><button class="thank-message" id="thank-message" type="button" aria-label="Thank You, hear again">Thank You</button></h2>
@@ -73,7 +90,11 @@
   </dialog>
   <dialog class="install-dialog" id="install-dialog" aria-labelledby="install-heading">
     <h2 id="install-heading">Install Toddle-Cation</h2>
+    <p>Allow location now for future check-ins. Your browser will ask for permission; you may also need to turn on location in your device settings.</p>
+    <button class="dialog-secondary" id="install-location" type="button">Allow location</button>
+    <p class="dialog-status" id="install-location-status" role="status" aria-live="polite"></p>
     <p id="install-instructions"></p>
+    <button class="close-thanks" id="continue-install" type="button">Continue to install</button>
     <button class="close-thanks" id="install-done" type="button">Done</button>
   </dialog>
   <main class="closed" id="closed" hidden>
@@ -86,7 +107,22 @@
     const speechSupported = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
     const installButton = document.getElementById('install-button');
     const installDialog = document.getElementById('install-dialog');
+    const installLocationButton = document.getElementById('install-location');
+    const installLocationStatus = document.getElementById('install-location-status');
+    const locationDialog = document.getElementById('location-dialog');
+    const locationStatus = document.getElementById('location-status');
+    const saveButton = document.getElementById('save-check-in');
+    const historyDialog = document.getElementById('history-dialog');
+    const historyStatus = document.getElementById('history-status');
+    const historyList = document.getElementById('history-list');
+    const cancelSaveButton = document.getElementById('cancel-save');
+    const legacyStorageKey = 'toddle-cation-check-ins';
     let installPrompt = null;
+    let selectedFeeling = '';
+    let pendingCheckIn = null;
+    let locationRequest = 0;
+    let installLocationRequest = 0;
+    let savingCheckIn = false;
 
     if ((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true) {
       installButton.hidden = true;
@@ -99,7 +135,34 @@
       installPrompt = null;
       installButton.hidden = true;
     });
-    installButton.addEventListener('click', async () => {
+    installButton.addEventListener('click', () => {
+      installLocationButton.disabled = false;
+      installLocationStatus.textContent = '';
+      document.getElementById('install-instructions').textContent = '';
+      installDialog.showModal();
+    });
+    installDialog.addEventListener('close', () => { installLocationRequest++; });
+    installLocationButton.addEventListener('click', () => {
+      if (!window.isSecureContext || !navigator.geolocation) {
+        installLocationStatus.textContent = 'Location is unavailable. Open the app on HTTPS or localhost and enable location on your device.';
+        return;
+      }
+      const request = ++installLocationRequest;
+      installLocationButton.disabled = true;
+      installLocationStatus.textContent = 'Waiting for location permission...';
+      navigator.geolocation.getCurrentPosition(() => {
+        if (request !== installLocationRequest || !installDialog.open) return;
+        installLocationButton.disabled = false;
+        installLocationStatus.textContent = 'Location is available for this browser. Check-ins will ask for your location when saved.';
+      }, error => {
+        if (request !== installLocationRequest || !installDialog.open) return;
+        installLocationButton.disabled = false;
+        installLocationStatus.textContent = error.code === 1
+          ? 'Location permission was denied. Allow location in your browser and device settings, then try again.'
+          : 'Could not get your location. Check your device location settings and try again.';
+      }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+    });
+    document.getElementById('continue-install').addEventListener('click', async () => {
       if (installPrompt) {
         const prompt = installPrompt;
         installPrompt = null;
@@ -119,7 +182,6 @@
         instructions = 'In Safari, choose File, then Add to Dock. In Chrome or Edge, use the install icon in the address bar or the browser menu.';
       }
       document.getElementById('install-instructions').textContent = instructions;
-      installDialog.showModal();
     });
     document.getElementById('install-done').addEventListener('click', () => installDialog.close());
     if ('serviceWorker' in navigator && window.isSecureContext) {
@@ -132,9 +194,11 @@
       const utterance = new SpeechSynthesisUtterance(text);
       const voices = window.speechSynthesis.getVoices();
       const englishVoices = voices.filter(voice => /^en([-_]|$)/i.test(voice.lang));
-      utterance.voice = englishVoices.find(voice => /samantha|karen|moira|tessa|victoria|fiona|susan|zira|hazel|aria|jenny|female|google us english/i.test(voice.name)) || englishVoices[0] || null;
+      const gentleVoices = englishVoices.filter(voice => /samantha|karen|moira|tessa|victoria|fiona|susan|zira|hazel|aria|jenny|female|google us english/i.test(voice.name));
+      utterance.voice = gentleVoices.find(voice => /enhanced|premium|neural|natural/i.test(voice.name)) || gentleVoices[0] || englishVoices[0] || null;
       utterance.lang = utterance.voice ? utterance.voice.lang : 'en-US';
-      utterance.rate = 0.9;
+      utterance.rate = 0.92;
+      utterance.pitch = 1.05;
       window.speechSynthesis.speak(utterance);
     }
 
@@ -150,6 +214,162 @@
       speak(heading.textContent);
     }
 
+    function openCheckInDatabase() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open('toddle-cation', 1);
+        request.onupgradeneeded = () => {
+          request.result.createObjectStore('check-ins', { autoIncrement: true });
+          request.result.createObjectStore('metadata');
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+        request.onblocked = () => reject(new Error('Database upgrade blocked by another tab'));
+      });
+    }
+
+    async function useCheckInDatabase(mode, operation) {
+      const database = await openCheckInDatabase();
+      try {
+        const legacy = localStorage.getItem(legacyStorageKey);
+        if (legacy !== null) {
+          const entries = JSON.parse(legacy);
+          if (!Array.isArray(entries)) throw new Error('Invalid saved check-ins');
+          await new Promise((resolve, reject) => {
+            const transaction = database.transaction(['check-ins', 'metadata'], 'readwrite');
+            const marker = transaction.objectStore('metadata').get('legacy-imported');
+            marker.onsuccess = () => {
+              if (!marker.result) {
+                entries.forEach(entry => transaction.objectStore('check-ins').add(entry));
+                transaction.objectStore('metadata').put(true, 'legacy-imported');
+              }
+            };
+            transaction.oncomplete = resolve;
+            transaction.onabort = transaction.onerror = () => reject(transaction.error);
+          });
+          localStorage.removeItem(legacyStorageKey);
+        }
+        return await new Promise((resolve, reject) => {
+          const transaction = database.transaction('check-ins', mode);
+          const request = operation(transaction.objectStore('check-ins'));
+          transaction.oncomplete = () => resolve(request.result);
+          transaction.onabort = transaction.onerror = () => reject(transaction.error);
+        });
+      } finally {
+        database.close();
+      }
+    }
+
+    function cancelSave() {
+      locationRequest++;
+      pendingCheckIn = null;
+      locationDialog.close();
+    }
+
+    locationDialog.addEventListener('cancel', event => {
+      event.preventDefault();
+      if (!savingCheckIn) cancelSave();
+    });
+    cancelSaveButton.addEventListener('click', cancelSave);
+    saveButton.addEventListener('click', () => {
+      if (!window.isSecureContext || !navigator.geolocation) {
+        locationStatus.textContent = 'Location is unavailable. Open the app on HTTPS or localhost and enable location on your device.';
+        return;
+      }
+      const request = ++locationRequest;
+      saveButton.disabled = true;
+      locationStatus.textContent = 'Waiting for location permission and your device location...';
+      navigator.geolocation.getCurrentPosition(async position => {
+        if (request !== locationRequest || !locationDialog.open) return;
+        savingCheckIn = true;
+        cancelSaveButton.disabled = true;
+        locationStatus.textContent = 'Saving your check-in...';
+        try {
+          await useCheckInDatabase('readwrite', store => store.add({
+            ...pendingCheckIn,
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracyMeters: position.coords.accuracy
+          }));
+        } catch (error) {
+          console.error('Unable to save check-in:', error);
+          locationStatus.textContent = 'Could not save on this device. Check your browser storage settings and try again.';
+          saveButton.disabled = false;
+          return;
+        } finally {
+          savingCheckIn = false;
+          cancelSaveButton.disabled = false;
+        }
+        cancelSave();
+        thanks.showModal();
+        speak('Thank you!');
+      }, error => {
+        if (request !== locationRequest || !locationDialog.open) return;
+        saveButton.disabled = false;
+        locationStatus.textContent = error.code === 1
+          ? 'Location permission was denied. Allow location in your browser and device settings, then try again.'
+          : 'Could not get your location. Check your device location settings and try again.';
+      }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+    });
+
+    document.getElementById('open-history').addEventListener('click', async () => {
+      historyList.replaceChildren();
+      historyStatus.textContent = 'Loading saved check-ins...';
+      historyDialog.showModal();
+      try {
+        const checkIns = await useCheckInDatabase('readonly', store => store.getAll());
+        historyStatus.textContent = '';
+        if (checkIns.length === 0) historyStatus.textContent = 'No saved check-ins yet.';
+        checkIns.slice().reverse().forEach(checkIn => {
+          const item = document.createElement('li');
+          item.textContent = `${checkIn.localDateTime} — ${checkIn.feeling}, ${checkIn.color}. Location: ${checkIn.latitude}, ${checkIn.longitude} (accuracy: ${Math.round(checkIn.accuracyMeters)} m).`;
+          historyList.appendChild(item);
+        });
+      } catch (error) {
+        console.error('Unable to read check-ins:', error);
+        historyStatus.textContent = 'Could not read saved check-ins. Check your browser storage settings.';
+      }
+    });
+    document.getElementById('download-history').addEventListener('click', async () => {
+      try {
+        const checkIns = await useCheckInDatabase('readonly', store => store.getAll());
+        if (checkIns.length === 0) {
+          historyStatus.textContent = 'No saved check-ins to download.';
+          return;
+        }
+        const rows = [
+          ['Local date and time', 'UTC timestamp', 'UTC minus local offset minutes', 'Feeling', 'Color', 'Latitude', 'Longitude', 'Accuracy meters'],
+          ...checkIns.map(entry => [entry.localDateTime, entry.timestamp, entry.timeZoneOffsetMinutes, entry.feeling, entry.color, entry.latitude, entry.longitude, entry.accuracyMeters])
+        ];
+        const csv = rows.map(row => row.map(value => {
+          const text = String(value);
+          const safe = typeof value === 'string' && /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
+          return `"${safe.replace(/"/g, '""')}"`;
+        }).join(',')).join('\r\n');
+        const url = URL.createObjectURL(new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'toddle-cation-check-ins.csv';
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        historyStatus.textContent = 'CSV download started.';
+      } catch (error) {
+        console.error('Unable to download check-ins:', error);
+        historyStatus.textContent = 'Could not download saved check-ins. Check your browser storage settings.';
+      }
+    });
+    document.getElementById('clear-history').addEventListener('click', async () => {
+      if (!window.confirm('Delete all saved check-ins from this browser?')) return;
+      try {
+        await useCheckInDatabase('readwrite', store => store.clear());
+        historyList.replaceChildren();
+        historyStatus.textContent = 'Saved check-ins deleted.';
+      } catch (error) {
+        console.error('Unable to delete check-ins:', error);
+        historyStatus.textContent = 'Could not delete saved check-ins. Check your browser storage settings.';
+      }
+    });
+    document.getElementById('close-history').addEventListener('click', () => historyDialog.close());
+
     document.querySelectorAll('.sound').forEach(button => {
       button.addEventListener('click', () => speak(button.dataset.speech));
       if (!speechSupported) {
@@ -159,12 +379,22 @@
     });
     const feelingChoices = document.querySelectorAll('.feeling-choice');
     feelingChoices.forEach(button => button.addEventListener('click', () => {
+      selectedFeeling = button.lastChild.textContent.trim();
       feelingChoices.forEach(choice => choice.setAttribute('aria-pressed', String(choice === button)));
       showScreen(true);
     }));
     document.querySelectorAll('.color-choice').forEach(button => button.addEventListener('click', () => {
-      thanks.showModal();
-      speak('Thank you!');
+      const date = new Date();
+      pendingCheckIn = {
+        feeling: selectedFeeling,
+        color: button.getAttribute('aria-label'),
+        localDateTime: date.toLocaleString(),
+        timestamp: date.toISOString(),
+        timeZoneOffsetMinutes: date.getTimezoneOffset()
+      };
+      saveButton.disabled = false;
+      locationStatus.textContent = '';
+      locationDialog.showModal();
     }));
     document.getElementById('back').addEventListener('click', () => showScreen(false));
     document.getElementById('thank-message').addEventListener('click', () => speak('Thank you!'));

@@ -26,6 +26,7 @@ main { width: min(1020px, calc(100% - 64px)); flex: 1; margin: 0 auto; padding: 
 .heading { text-align: center; }
 h1 { margin: 0; font-family: Nunito, sans-serif; font-size: 42px; line-height: 1.15; font-weight: 900; }
 .subtitle { margin: 12px 0 0; color: var(--muted); font-size: 16px; }
+.privacy-notice { margin: 12px auto 0; max-width: 440px; color: var(--muted); font-size: 14px; line-height: 1.5; }
 .sound { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; margin-top: 21px; padding: 0 15px; background: #e3f0e9; border: 0; border-radius: 6px; color: #276d61; font-weight: 700; cursor: pointer; }
 .sound svg { width: 19px; height: 19px; }
 .sound:hover { background: #d4e9dc; }
@@ -64,14 +65,21 @@ h1 { margin: 0; font-family: Nunito, sans-serif; font-size: 42px; line-height: 1
 .back { display: inline-flex; align-items: center; gap: 6px; margin-top: 27px; padding: 8px 0; border: 0; background: transparent; color: #526e64; font-weight: 700; cursor: pointer; }
 .back svg { width: 18px; height: 18px; }
 footer { padding: 20px 32px 25px; text-align: center; color: #89978e; font-size: 12px; }
+.history-button { margin-bottom: 12px; padding: 10px 14px; border: 0; border-radius: 6px; background: #e3f0e9; color: #276d61; font-weight: 700; cursor: pointer; }
+.history-button:hover { background: #d4e9dc; }
 [hidden] { display: none !important; }
 dialog { width: min(420px, calc(100% - 40px)); padding: 38px 28px; border: 0; border-radius: 8px; text-align: center; color: var(--ink); box-shadow: 0 18px 70px #173a3033; }
 dialog::backdrop { background: #1d3831a6; }
 .thank-icon { display: inline-grid; place-items: center; width: 66px; height: 66px; margin-bottom: 19px; border-radius: 50%; background: #e1f1e7; color: #2a806d; }
 .thank-icon svg { width: 31px; height: 31px; }
 dialog h2 { margin: 0; font-family: Nunito, sans-serif; font-size: 32px; }
-.install-dialog h2 { font-size: 25px; }
-.install-dialog p { margin: 16px 0 0; color: var(--muted); line-height: 1.6; }
+.install-dialog h2, .detail-dialog h2 { font-size: 25px; }
+.install-dialog p, .detail-dialog p { margin: 16px 0 0; color: var(--muted); line-height: 1.6; }
+.detail-dialog .dialog-status, .install-dialog .dialog-status { color: #76472a; }
+.dialog-secondary { min-height: 48px; margin: 12px 8px 0; padding: 0 16px; border: 1px solid #cfe2d7; border-radius: 6px; background: #fff; color: #276d61; font-weight: 700; cursor: pointer; }
+.history-list { max-height: 40vh; margin: 16px 0 0; padding-left: 24px; overflow-y: auto; text-align: left; overflow-wrap: anywhere; }
+.history-list li { padding: 8px 0; line-height: 1.5; }
+button:disabled { opacity: .6; cursor: not-allowed; }
 .thank-message { min-height: 48px; padding: 8px 20px; border: 1px solid #cfe2d7; border-radius: 6px; background: #e3f0e9; color: #276d61; font: inherit; cursor: pointer; }
 .thank-message:hover { background: #d4e9dc; }
 .close-thanks { min-height: 48px; margin-top: 24px; padding: 0 24px; border: 0; border-radius: 6px; background: #287c71; color: white; font-weight: 700; cursor: pointer; }
