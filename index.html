@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f7f2">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Toddle-Cation">
+  <title>How do you feel today?</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span> Toddle-Cation</div>
+      <div class="header-actions">
+        <button class="install-button" id="install-button" type="button" title="Install app" aria-label="Install app"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 17v3h14v-3"/></svg><span>Install</span></button>
+        <div class="step"><span id="step-text">1 of 2</span><span class="step-dots" aria-hidden="true"><span id="dot-one" class="active"></span><span id="dot-two"></span></span></div>
+      </div>
+    </header>
+    <main>
+      <section id="colors-screen" aria-labelledby="colors-heading">
+        <div class="color-wheel">
+          <div class="question-circle"><h1 id="colors-heading" tabindex="-1">How do you feel today?</h1></div>
+          <div class="colors">
+          <button class="color-choice" type="button" aria-label="Red"><span class="swatch"></span><span class="color-name">Red</span></button>
+          <button class="color-choice" type="button" aria-label="Blue"><span class="swatch"></span><span class="color-name">Blue</span></button>
+          <button class="color-choice" type="button" aria-label="Yellow"><span class="swatch"></span><span class="color-name">Yellow</span></button>
+          <button class="color-choice" type="button" aria-label="Black"><span class="swatch"></span><span class="color-name">Black</span></button>
+          <button class="color-choice" type="button" aria-label="White"><span class="swatch"></span><span class="color-name">White</span></button>
+          <button class="color-choice" type="button" aria-label="Orange"><span class="swatch"></span><span class="color-name">Orange</span></button>
+          <button class="color-choice" type="button" aria-label="Green"><span class="swatch"></span><span class="color-name">Green</span></button>
+          <button class="color-choice" type="button" aria-label="Purple"><span class="swatch"></span><span class="color-name">Purple</span></button>
+          </div>
+        </div>
+        <div class="color-prompt">
+          <p class="subtitle">Pick a color that feels like you.</p>
+          <button class="sound" type="button" data-speech="How do you feel today?" aria-label="Listen to the question: How do you feel today?">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15 9a5 5 0 0 1 0 6M18 6a9 9 0 0 1 0 12"/></svg> Hear the question
+          </button>
+        </div>
+      </section>
+      <section id="pictures-screen" aria-labelledby="pictures-heading" hidden>
+        <div class="heading">
+          <p class="eyebrow">One more thing</p>
+          <h1 id="pictures-heading" tabindex="-1">Why do you feel this way?</h1>
+          <p class="subtitle">Pick a picture that tells us more.</p>
+          <button class="sound" type="button" data-speech="Why do you feel this way?" aria-label="Listen to the question: Why do you feel this way?">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15 9a5 5 0 0 1 0 6M18 6a9 9 0 0 1 0 12"/></svg> Hear the question
+          </button>
+        </div>
+        <p class="section-label">Choose a picture</p>
+        <div class="pictures">
+          <button class="picture-choice" type="button"><svg viewBox="0 0 80 80" aria-hidden="true"><path fill="#fff6e8" d="M17 34 40 16l23 18v30H17z"/><path fill="#ed8a79" d="M10 35 40 12l30 23-5 4-25-19-25 19z"/><path fill="#efb46f" d="M33 64V45h14v19z"/><path fill="#b8dfe2" d="M22 39h8v8h-8zm28 0h8v8h-8z"/><path d="M39 54h.1"/></svg>House</button>
+          <button class="picture-choice" type="button"><svg viewBox="0 0 80 80" aria-hidden="true"><path fill="#644d47" d="M22 35c0-16 7-23 18-23s18 7 18 23v15H22z"/><path fill="#dd8d86" d="M18 69c2-13 10-19 22-19s20 6 22 19z"/><path fill="#efc3a5" d="M28 28c3-1 8-4 11-8 3 4 8 7 13 8v7c0 9-5 15-12 15s-12-6-12-15z"/><path d="M34 33h.1m12 0h.1M35 41c3 3 7 3 10 0"/></svg>Mother</button>
+          <button class="picture-choice" type="button"><svg viewBox="0 0 80 80" aria-hidden="true"><path fill="#78aeb0" d="M18 69c2-13 10-19 22-19s20 6 22 19z"/><path fill="#be8c70" d="M27 27c0-9 5-15 13-15s13 6 13 15v8c0 9-6 15-13 15s-13-6-13-15z"/><path fill="#493f3a" d="M27 29c-2-10 3-17 13-17s15 7 13 17c-4-1-8-4-10-7-3 4-9 6-16 7z"/><path d="M34 34h.1m12 0h.1M35 42c3 3 7 3 10 0"/></svg>Father</button>
+          <button class="picture-choice" type="button"><svg viewBox="0 0 80 80" aria-hidden="true"><path fill="#aa745d" d="M24 25c-8-7-14-2-13 9l5 11 9-5m31-15c8-7 14-2 13 9l-5 11-9-5"/><path fill="#e9bb8c" d="M23 32c0-12 7-18 17-18s17 6 17 18v14c0 12-7 19-17 19s-17-7-17-19z"/><ellipse cx="40" cy="51" rx="10" ry="8" fill="#fff0dd"/><path d="M33 38h.1m14 0h.1"/><path fill="#654b42" d="M37 47h6l-3 4z"/><path d="M40 51v3m-6 1c3 3 9 3 12 0"/></svg>Dog</button>
+          <button class="picture-choice" type="button"><svg viewBox="0 0 80 80" aria-hidden="true"><path fill="#d5aaa0" d="M19 37 18 16l15 10c5-2 9-2 14 0l15-10-1 21c3 4 4 8 4 12 0 11-10 18-25 18S15 60 15 49c0-4 1-8 4-12z"/><path fill="#f2d5cf" d="m22 22 8 6-8 3zm36 0-8 6 8 3z"/><path d="M32 43h.1m16 0h.1"/><path fill="#bb7470" d="m37 49 3 3 3-3z"/><path d="M40 52v3m-5 0c2 3 8 3 10 0M20 49l-9-2m9 7-9 2m49-7 9-2m-9 7 9 2"/></svg>Cat</button>
+          <button class="picture-choice" type="button"><svg viewBox="0 0 80 80" aria-hidden="true"><path fill="#e98875" d="M13 49v-7c0-3 3-5 7-6l7-12h25l9 12c5 1 7 3 7 7v6c0 3-2 5-5 5H18c-3 0-5-2-5-5z"/><path fill="#d4eff0" d="m25 36 5-9h19l7 9z"/><path d="M40 27v9"/><circle cx="24" cy="54" r="6" fill="#52605d"/><circle cx="57" cy="54" r="6" fill="#52605d"/><path d="M12 44h5m47 0h5"/></svg>Car</button>
+          <button class="picture-choice" type="button"><svg viewBox="0 0 80 80" aria-hidden="true"><path fill="#f0c77e" d="M13 28 40 14l27 14v5H13z"/><path fill="#fff6e8" d="M17 33h46v31H17z"/><path fill="#e2a68a" d="M34 64V45h12v19z"/><path fill="#add4d0" d="M22 40h7v8h-7zm29 0h7v8h-7z"/><path d="M11 65h58M34 28h12M40 45v19"/><path fill="#eea56e" d="M22 19h8v5h-8z"/></svg>Library</button>
+          <button class="picture-choice" type="button"><svg viewBox="0 0 80 80" aria-hidden="true"><path d="M10 66h60"/><path fill="#d5a77f" d="M24 66V37h7v29z"/><path fill="#9bcbaa" d="M15 38c-5-4-3-11 2-13-1-8 9-12 15-7 7-3 13 3 11 10 5 6 1 13-6 13-5 4-13 3-17-1z"/><path fill="#eebf78" d="M47 46h21v7H47zm3 8h15v6H50z"/><path d="M51 60v6m13-6v6M47 46v-4m21 4v-4"/><circle cx="60" cy="17" r="6" fill="#f4d57d"/></svg>Park</button>
+          <button class="picture-choice" type="button" aria-label="Something else"><svg viewBox="0 0 80 80" aria-hidden="true"><path fill="#c7b9dc" d="M17 17h46v35c0 6-5 10-11 10H35l-12 7v-7c-4-1-6-5-6-10z"/><path d="M32 30c0-5 4-8 9-8s9 3 9 8c0 4-3 6-6 8-3 2-4 4-4 7M40 52h.1"/></svg>Something else</button>
+        </div>
+        <button class="back" id="back" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg> Back to colors</button>
+      </section>
+    </main>
+    <footer>Made for little feelings and big conversations.</footer>
+  </div>
+  <dialog id="thanks" aria-labelledby="thanks-heading">
+    <span class="thank-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></span>
+    <h2 id="thanks-heading"><button class="thank-message" id="thank-message" type="button" aria-label="Thank You, hear again">Thank You</button></h2>
+    <button class="close-thanks" id="close-thanks" type="button">Close</button>
+  </dialog>
+  <dialog class="install-dialog" id="install-dialog" aria-labelledby="install-heading">
+    <h2 id="install-heading">Install Toddle-Cation</h2>
+    <p id="install-instructions"></p>
+    <button class="close-thanks" id="install-done" type="button">Done</button>
+  </dialog>
+  <main class="closed" id="closed" hidden>
+    <h1 id="closed-heading" tabindex="-1">You can close this tab.</h1>
+  </main>
+  <script>
+    const colorsScreen = document.getElementById('colors-screen');
+    const picturesScreen = document.getElementById('pictures-screen');
+    const thanks = document.getElementById('thanks');
+    const speechSupported = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+    const installButton = document.getElementById('install-button');
+    const installDialog = document.getElementById('install-dialog');
+    let installPrompt = null;
+
+    if ((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true) {
+      installButton.hidden = true;
+    }
+    window.addEventListener('beforeinstallprompt', event => {
+      event.preventDefault();
+      installPrompt = event;
+    });
+    window.addEventListener('appinstalled', () => {
+      installPrompt = null;
+      installButton.hidden = true;
+    });
+    installButton.addEventListener('click', async () => {
+      if (installPrompt) {
+        const prompt = installPrompt;
+        installPrompt = null;
+        try {
+          await prompt.prompt();
+          return;
+        } catch {}
+      }
+      const appleMobile = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const appleComputer = /Mac/i.test(navigator.platform) && !appleMobile;
+      let instructions = 'Open your browser menu and choose Install app or Add to Home screen. On a computer, Chrome or Edge may also show an install icon in the address bar.';
+      if (!window.isSecureContext) {
+        instructions = 'To install, open this app from an HTTPS web address. Then use your browser menu to install it or add it to your home screen.';
+      } else if (appleMobile) {
+        instructions = 'Tap Share in your browser, then choose Add to Home Screen. On older iOS versions, open this page in Safari first.';
+      } else if (appleComputer) {
+        instructions = 'In Safari, choose File, then Add to Dock. In Chrome or Edge, use the install icon in the address bar or the browser menu.';
+      }
+      document.getElementById('install-instructions').textContent = instructions;
+      installDialog.showModal();
+    });
+    document.getElementById('install-done').addEventListener('click', () => installDialog.close());
+    if ('serviceWorker' in navigator && window.isSecureContext) {
+      navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+    }
+
+    function speak(text) {
+      if (!speechSupported) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+      const englishVoices = voices.filter(voice => /^en([-_]|$)/i.test(voice.lang));
+      utterance.voice = englishVoices.find(voice => /samantha|karen|moira|tessa|victoria|fiona|susan|zira|hazel|aria|jenny|female|google us english/i.test(voice.name)) || englishVoices[0] || null;
+      utterance.lang = utterance.voice ? utterance.voice.lang : 'en-US';
+      utterance.rate = 0.9;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function showScreen(showPictures) {
+      colorsScreen.hidden = showPictures;
+      picturesScreen.hidden = !showPictures;
+      document.getElementById('step-text').textContent = showPictures ? '2 of 2' : '1 of 2';
+      document.getElementById('dot-one').classList.toggle('active', !showPictures);
+      document.getElementById('dot-two').classList.toggle('active', showPictures);
+      const heading = document.getElementById(showPictures ? 'pictures-heading' : 'colors-heading');
+      heading.focus();
+      window.scrollTo(0, 0);
+      speak(heading.textContent);
+    }
+
+    document.querySelectorAll('.sound').forEach(button => {
+      button.addEventListener('click', () => speak(button.dataset.speech));
+      if (!speechSupported) {
+        button.disabled = true;
+        button.textContent = 'Voice unavailable in this browser';
+      }
+    });
+    document.querySelectorAll('.color-choice').forEach(button => button.addEventListener('click', () => showScreen(true)));
+    document.querySelectorAll('.picture-choice').forEach(button => button.addEventListener('click', () => {
+      thanks.showModal();
+      speak('Thank you!');
+    }));
+    document.getElementById('back').addEventListener('click', () => showScreen(false));
+    document.getElementById('thank-message').addEventListener('click', () => speak('Thank you!'));
+    document.getElementById('close-thanks').addEventListener('click', () => {
+      if (speechSupported) window.speechSynthesis.cancel();
+      window.close();
+      thanks.close();
+      document.getElementById('app').hidden = true;
+      document.getElementById('closed').hidden = false;
+      document.getElementById('closed-heading').focus();
+    });
+    window.addEventListener('load', () => speak('How do you feel today?'));
+  </script>
+</body>
+</html>
