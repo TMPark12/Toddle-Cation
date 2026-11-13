@@ -21,12 +21,17 @@
         <div class="step"><span id="step-text">1 of 2</span><span class="step-dots" aria-hidden="true"><span id="dot-one" class="active"></span><span id="dot-two"></span></span></div>
       </div>
     </header>
+    <aside class="update-notice" id="update-notice" aria-label="App update" hidden>
+      <p>A new version is ready. Updating reloads the app; finish any check-in first. Saved check-ins stay on this device.</p>
+      <button class="install-button" id="update-app" type="button">Update app</button>
+      <p class="update-status" id="update-status" role="status" aria-live="polite"></p>
+    </aside>
     <main>
       <section id="feelings-screen" aria-labelledby="feelings-heading">
         <div class="heading">
           <h1 id="feelings-heading" tabindex="-1">How do you feel?</h1>
           <p class="subtitle">Pick the face that feels like you.</p>
-          <p class="privacy-notice">With location permission, your check-in and location will be saved on this device.</p>
+          <p class="privacy-notice">With location permission, your check-in, location and browser/device information will be saved on this device.</p>
           <button class="sound" type="button" data-speech="How do you feel?" aria-label="Listen to the question: How do you feel?">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15 9a5 5 0 0 1 0 6M18 6a9 9 0 0 1 0 12"/></svg> Hear the question
           </button>
@@ -70,17 +75,18 @@
   </div>
   <dialog class="detail-dialog" id="location-dialog" aria-labelledby="location-heading" aria-describedby="location-description">
     <h2 id="location-heading">Save this check-in?</h2>
-    <p id="location-description">An adult can allow location to save the feeling, color, local date and time, and device location on this device. Location is required to save.</p>
+    <p id="location-description">An adult can allow location to save the feeling, color, local date and time, device location, and browser/device information on this device. Location is required to save.</p>
     <p class="dialog-status" id="location-status" role="status" aria-live="polite"></p>
     <button class="close-thanks" id="save-check-in" type="button">Allow location and save</button>
     <button class="dialog-secondary" id="cancel-save" type="button">Cancel</button>
   </dialog>
   <dialog class="detail-dialog" id="history-dialog" aria-labelledby="history-heading">
     <h2 id="history-heading">Saved check-ins</h2>
-    <p>These are stored in this browser on this device, including location.</p>
+    <p>These are stored in this browser on this device, including location and browser/device information.</p>
+    <p>Export creates or replaces checkins/checkins.csv in a folder you choose when supported. Otherwise, checkins.csv downloads to your browser's download location.</p>
     <p class="dialog-status" id="history-status" role="status" aria-live="polite"></p>
     <ol class="history-list" id="history-list"></ol>
-    <button class="dialog-secondary" id="download-history" type="button">Download CSV</button>
+    <button class="dialog-secondary" id="download-history" type="button">Export checkins.csv</button>
     <button class="dialog-secondary" id="clear-history" type="button">Clear saved check-ins</button>
     <button class="close-thanks" id="close-history" type="button">Done</button>
   </dialog>
@@ -213,7 +219,61 @@
     });
     document.getElementById('install-done').addEventListener('click', () => installDialog.close());
     if ('serviceWorker' in navigator && window.isSecureContext) {
-      navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+      const updateNotice = document.getElementById('update-notice');
+      const updateButton = document.getElementById('update-app');
+      const updateStatus = document.getElementById('update-status');
+      let registration;
+      let updating = false;
+      let updateTimer;
+
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (updating) {
+          clearTimeout(updateTimer);
+          window.location.reload();
+        } else {
+          updateNotice.hidden = true;
+        }
+      });
+      updateButton.addEventListener('click', () => {
+        if (!registration || !registration.waiting) {
+          updateStatus.textContent = 'The update is no longer available. Reload the app to check again.';
+          return;
+        }
+        updating = true;
+        updateButton.disabled = true;
+        updateStatus.textContent = 'Updating...';
+        updateTimer = setTimeout(() => {
+          updating = false;
+          updateButton.disabled = false;
+          updateStatus.textContent = 'The update did not finish. Please try again.';
+        }, 15000);
+        try {
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        } catch (error) {
+          clearTimeout(updateTimer);
+          updating = false;
+          updateButton.disabled = false;
+          updateStatus.textContent = 'Could not start the update. Please try again.';
+          console.error('Unable to start the app update:', error);
+        }
+      });
+      navigator.serviceWorker.register('./service-worker.js').then(result => {
+        registration = result;
+        function showWaitingUpdate() {
+          if (registration.waiting && navigator.serviceWorker.controller) updateNotice.hidden = false;
+        }
+        function watchInstallingWorker() {
+          const worker = registration.installing;
+          if (!worker) return;
+          worker.addEventListener('statechange', () => {
+            if (worker.state === 'installed') showWaitingUpdate();
+          });
+          if (worker.state === 'installed') showWaitingUpdate();
+        }
+        registration.addEventListener('updatefound', watchInstallingWorker);
+        watchInstallingWorker();
+        showWaitingUpdate();
+      }).catch(error => console.error('Unable to register the app for offline use:', error));
     }
 
     function speak(text) {
@@ -359,30 +419,58 @@
     });
     document.getElementById('download-history').addEventListener('click', async () => {
       try {
+        const directory = typeof window.showDirectoryPicker === 'function'
+          ? await window.showDirectoryPicker({ mode: 'readwrite' })
+          : null;
         const checkIns = await useCheckInDatabase('readonly', store => store.getAll());
         if (checkIns.length === 0) {
           historyStatus.textContent = 'No saved check-ins to download.';
           return;
         }
         const rows = [
-          ['Local date and time', 'UTC timestamp', 'UTC minus local offset minutes', 'Feeling', 'Color', 'Latitude', 'Longitude', 'Accuracy meters'],
-          ...checkIns.map(entry => [entry.localDateTime, entry.timestamp, entry.timeZoneOffsetMinutes, entry.feeling, entry.color, entry.latitude, entry.longitude, entry.accuracyMeters])
+          ['Local date', 'Local time', 'Mood', 'Color', 'Device / browser', 'Latitude', 'Longitude', 'Accuracy meters', 'UTC timestamp', 'UTC minus local offset minutes'],
+          ...checkIns.map(entry => {
+            const timestamp = Date.parse(entry.timestamp);
+            const legacyDate = Number.isFinite(timestamp) && Number.isFinite(entry.timeZoneOffsetMinutes)
+              ? new Date(timestamp - entry.timeZoneOffsetMinutes * 60000).toISOString()
+              : '';
+            return [
+              entry.localDate || legacyDate.slice(0, 10) || entry.localDateTime || '',
+              entry.localTime || legacyDate.slice(11, 19),
+              entry.feeling, entry.color, entry.device || 'Not recorded',
+              entry.latitude, entry.longitude, entry.accuracyMeters, entry.timestamp ?? '', entry.timeZoneOffsetMinutes ?? ''
+            ];
+          })
         ];
         const csv = rows.map(row => row.map(value => {
           const text = String(value);
           const safe = typeof value === 'string' && /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
           return `"${safe.replace(/"/g, '""')}"`;
         }).join(',')).join('\r\n');
-        const url = URL.createObjectURL(new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8' }));
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'toddle-cation-check-ins.csv';
-        link.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        historyStatus.textContent = 'CSV download started.';
+        const file = new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8' });
+        if (directory) {
+          const folder = await directory.getDirectoryHandle('checkins', { create: true });
+          const handle = await folder.getFileHandle('checkins.csv', { create: true });
+          const writable = await handle.createWritable();
+          await writable.write(file);
+          await writable.close();
+          historyStatus.textContent = 'Saved checkins/checkins.csv in your chosen folder.';
+        } else {
+          const url = URL.createObjectURL(file);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = 'checkins.csv';
+          link.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          historyStatus.textContent = 'Download started. Find checkins.csv in your browser’s downloads and move it to a checkins folder if you wish.';
+        }
       } catch (error) {
+        if (error.name === 'AbortError') {
+          historyStatus.textContent = 'Export cancelled.';
+          return;
+        }
         console.error('Unable to download check-ins:', error);
-        historyStatus.textContent = 'Could not download saved check-ins. Check your browser storage settings.';
+        historyStatus.textContent = 'Could not export check-ins. Check folder permissions and browser storage settings, then try again.';
       }
     });
     document.getElementById('clear-history').addEventListener('click', async () => {
@@ -416,9 +504,12 @@
       pendingCheckIn = {
         feeling: selectedFeeling,
         color: button.getAttribute('aria-label'),
+        localDate: date.toLocaleDateString(),
+        localTime: date.toLocaleTimeString(),
         localDateTime: date.toLocaleString(),
         timestamp: date.toISOString(),
-        timeZoneOffsetMinutes: date.getTimezoneOffset()
+        timeZoneOffsetMinutes: date.getTimezoneOffset(),
+        device: navigator.userAgent || navigator.platform || 'Not available'
       };
       saveButton.disabled = false;
       locationStatus.textContent = '';

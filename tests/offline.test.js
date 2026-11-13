@@ -36,5 +36,24 @@ test('caches the app and serves its pages and styles when offline', async () => 
     request: { method: 'GET', url: 'https://example.test/style.css', mode: 'no-cors', path: './style.css' },
     respondWith(promise) { pending = promise; }
   });
+
   assert.equal(await pending, 'cached styles');
+});
+
+test('activates a waiting worker only when an update is requested', async () => {
+  const handlers = {};
+  let activations = 0;
+  const context = {
+    self: {
+      addEventListener(name, callback) { handlers[name] = callback; },
+      skipWaiting() { activations++; return Promise.resolve(); }
+    }
+  };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../service-worker.js'), 'utf8'), context);
+  let pending;
+  handlers.message({ data: { type: 'OTHER' }, waitUntil(promise) { pending = promise; } });
+  assert.equal(activations, 0);
+  handlers.message({ data: { type: 'SKIP_WAITING' }, waitUntil(promise) { pending = promise; } });
+  await pending;
+  assert.equal(activations, 1);
 });

@@ -17,6 +17,10 @@ button:focus-visible { outline: 4px solid #194c9b; outline-offset: 4px; }
 .step-dots { display: flex; gap: 5px; }
 .step-dots span { width: 8px; height: 8px; border-radius: 50%; background: #d3ddd6; }
 .step-dots span.active { width: 20px; border-radius: 8px; background: var(--teal); }
+.update-notice { width: min(1020px, calc(100% - 64px)); margin: 20px auto 0; padding: 16px; border: 1px solid #cfe2d7; border-radius: 8px; background: #e3f0e9; text-align: center; }
+.update-notice p { margin: 0 0 10px; line-height: 1.5; }
+.update-notice .update-status { margin: 8px 0 0; color: #76472a; }
+.update-notice .update-status:empty { display: none; }
 main { width: min(1020px, calc(100% - 64px)); flex: 1; margin: 0 auto; padding: 48px 0 42px; }
 .heading { text-align: center; }
 h1 { margin: 0; font-family: Nunito, sans-serif; font-size: 42px; line-height: 1.15; font-weight: 900; }
@@ -92,6 +96,7 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 .closed h1 { font-size: 28px; }
 @media (max-width: 760px) {
   .topbar { width: calc(100% - 36px); height: 70px; }
+  .update-notice { width: calc(100% - 36px); }
   main { width: calc(100% - 36px); padding-top: 38px; }
   h1 { font-size: 34px; }
   .question-circle h1 { font-size: clamp(16px, 4vw, 25px); }

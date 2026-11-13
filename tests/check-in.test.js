@@ -25,7 +25,10 @@ function createApp(options = {}) {
     if (id) elements.set(id, node);
     return node;
   }
-  for (const match of html.matchAll(/\bid="([^"]+)"/g)) element(match[1]);
+  for (const match of html.matchAll(/<[^>]*\bid="([^"]+)"[^>]*>/g)) {
+    const node = element(match[1]);
+    node.hidden = /\shidden(?:\s|>)/.test(match[0]);
+  }
   const feeling = element();
   feeling.lastChild = { textContent: 'Happy' };
   const color = element();
@@ -43,6 +46,7 @@ function createApp(options = {}) {
   };
   let request;
   const navigator = { userAgent: options.userAgent || '', platform: options.platform || '', standalone: options.standalone || false };
+  if (options.serviceWorker) navigator.serviceWorker = options.serviceWorker;
   if (!options.noGeolocation) navigator.geolocation = {
     getCurrentPosition(success, failure, settings) { request = { success, failure, settings }; }
   };
@@ -50,8 +54,10 @@ function createApp(options = {}) {
     isSecureContext: options.secure !== false,
     matchMedia() { return { matches: !!options.standalone }; },
     addEventListener(name, callback) { handlers[name] = callback; },
+    location: { reload() { if (options.onReload) options.onReload(); } },
     scrollTo() {}, close() {}, confirm() { return true; }
   };
+  if (options.showDirectoryPicker) window.showDirectoryPicker = options.showDirectoryPicker;
   const database = {
     createObjectStore() {},
     close() {},
@@ -99,6 +105,7 @@ function createApp(options = {}) {
     }
   };
   const downloads = [];
+  const downloadLinks = [];
   const sessionValues = options.sessionValues || new Map();
   const sessionStorage = {
     getItem(key) { return sessionValues.get(key) ?? null; },
@@ -111,12 +118,12 @@ function createApp(options = {}) {
     querySelectorAll(selector) { return { '.feeling-choice': [feeling], '.color-choice': [color], '.sound': [sound] }[selector]; },
     createElement(tag) {
       const node = element();
-      if (tag === 'a') node.click = () => { node.clicked = true; };
+      if (tag === 'a') node.click = () => { downloadLinks.push(node.download); };
       return node;
     }
   };
-  vm.runInNewContext(script, { document, window, navigator, localStorage, sessionStorage, indexedDB, URL, Blob, setTimeout, console: { error() {} } });
-  return { elements, feeling, color, storage, records, downloads, handlers, getRequest: () => request };
+  vm.runInNewContext(script, { document, window, navigator, localStorage, sessionStorage, indexedDB, URL, Blob, setTimeout, clearTimeout, console: { error() {} } });
+  return { elements, feeling, color, storage, records, downloads, downloadLinks, handlers, getRequest: () => request };
 }
 
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -131,7 +138,7 @@ function position() {
 }
 
 test('saves feeling, color, local time and location only after permission succeeds', async () => {
-  const app = createApp();
+  const app = createApp({ userAgent: 'Example Device Browser' });
   select(app);
   assert.equal(app.elements.get('location-dialog').open, true);
   assert.equal(app.records.length, 0);
@@ -142,6 +149,9 @@ test('saves feeling, color, local time and location only after permission succee
   const [entry] = app.records;
   assert.equal(entry.feeling, 'Happy');
   assert.equal(entry.color, 'Blue');
+  assert.ok(entry.localDate);
+  assert.ok(entry.localTime);
+  assert.equal(entry.device, 'Example Device Browser');
   assert.ok(entry.localDateTime);
   assert.ok(!Number.isNaN(Date.parse(entry.timestamp)));
   assert.equal(typeof entry.timeZoneOffsetMinutes, 'number');
@@ -155,11 +165,66 @@ test('saves feeling, color, local time and location only after permission succee
   app.elements.get('download-history').click();
   await flush();
   const csv = await app.downloads[0].text();
-  assert.match(csv, /Local date and time/);
-  assert.match(csv, /"Happy","Blue","42\.12","-71\.34","10"/);
+  assert.match(csv, /Local date","Local time","Mood","Color","Device \/ browser/);
+  assert.match(csv, /"Happy","Blue","Example Device Browser","42\.12","-71\.34","10"/);
+  assert.deepEqual(app.downloadLinks, ['checkins.csv']);
   app.elements.get('clear-history').click();
   await flush();
   assert.equal(app.records.length, 0);
+});
+
+test('exports all entries to a checkins folder in the selected directory', async () => {
+  let written;
+  const calls = [];
+  const handle = {
+    async createWritable() {
+      return {
+        async write(file) { written = await file.text(); },
+        async close() { calls.push('closed'); }
+      };
+    }
+  };
+  const folder = { async getFileHandle(name, options) { calls.push([name, options.create]); return handle; } };
+  const parent = { async getDirectoryHandle(name, options) { calls.push([name, options.create]); return folder; } };
+  const app = createApp({ userAgent: 'Device "A", browser', showDirectoryPicker(options) {
+    calls.push(['picker', options.mode]);
+    return Promise.resolve(parent);
+  } });
+  select(app);
+  app.elements.get('save-check-in').click();
+  app.getRequest().success(position());
+  await flush();
+  app.records.push({ feeling: 'Sad', color: 'Red', timestamp: '2026-01-02T03:04:05.000Z', timeZoneOffsetMinutes: 300, latitude: 1, longitude: 2, accuracyMeters: 3 });
+  await app.elements.get('download-history').click();
+  assert.deepEqual(calls, [['picker', 'readwrite'], ['checkins', true], ['checkins.csv', true], 'closed']);
+  assert.match(written, /"Device ""A"", browser"/);
+  assert.match(written, /"2026-01-01","22:04:05","Sad","Red","Not recorded","1","2","3"/);
+  assert.match(app.elements.get('history-status').textContent, /saved checkins\/checkins\.csv/i);
+  assert.equal(app.downloads.length, 0);
+});
+
+test('folder selection cancellation and permission errors are reported without deleting check-ins', async () => {
+  for (const [error, expected] of [[Object.assign(new Error('cancelled'), { name: 'AbortError' }), /cancelled/i], [new Error('denied'), /could not export/i]]) {
+    const app = createApp({ showDirectoryPicker() { return Promise.reject(error); } });
+    app.records.push({ feeling: 'Happy' });
+    await app.elements.get('download-history').click();
+    assert.match(app.elements.get('history-status').textContent, expected);
+    assert.equal(app.records.length, 1);
+  }
+});
+
+test('a failed file write reports an error and keeps the local database', async () => {
+  const app = createApp({ showDirectoryPicker() {
+    return Promise.resolve({
+      async getDirectoryHandle() {
+        return { async getFileHandle() { throw new Error('Permission denied'); } };
+      }
+    });
+  } });
+  app.records.push({ feeling: 'Happy', color: 'Red' });
+  await app.elements.get('download-history').click();
+  assert.match(app.elements.get('history-status').textContent, /could not export/i);
+  assert.equal(app.records.length, 1);
 });
 
 test('denied or unavailable location cannot save and allows retry', async () => {
@@ -294,4 +359,68 @@ test('dismissed and failed native prompts do not claim installation succeeded', 
   await failed.elements.get('install-button').click();
   assert.match(failed.elements.get('install-instructions').textContent, /could not open.*install/i);
   assert.equal(failed.elements.get('install-dialog').open, true);
+});
+
+test('offers a waiting update, applies it on request, and keeps saved check-ins', async () => {
+  const serviceEvents = {};
+  const messages = [];
+  let reloaded = false;
+  const registration = {
+    waiting: { postMessage(message) { messages.push(message.type); } },
+    addEventListener() {}
+  };
+  const serviceWorker = {
+    controller: {},
+    addEventListener(name, callback) { serviceEvents[name] = callback; },
+    register() { return Promise.resolve(registration); }
+  };
+  const app = createApp({ serviceWorker, onReload() { reloaded = true; } });
+  select(app);
+  app.elements.get('save-check-in').click();
+  app.getRequest().success(position());
+  await flush();
+  assert.equal(app.records.length, 1);
+  assert.equal(app.elements.get('update-notice').hidden, false);
+  app.elements.get('update-app').click();
+  assert.deepEqual(messages, ['SKIP_WAITING']);
+  assert.equal(reloaded, false);
+  serviceEvents.controllerchange();
+  assert.equal(reloaded, true);
+  assert.equal(app.records.length, 1);
+});
+
+test('offers a newly installed update but not a first offline installation', async () => {
+  for (const controlled of [true, false]) {
+    const registrationEvents = {};
+    const workerEvents = {};
+    const worker = { state: 'installing', addEventListener(name, callback) { workerEvents[name] = callback; } };
+    const registration = {
+      waiting: null,
+      installing: worker,
+      addEventListener(name, callback) { registrationEvents[name] = callback; }
+    };
+    const serviceWorker = {
+      controller: controlled ? {} : null,
+      addEventListener() {},
+      register() { return Promise.resolve(registration); }
+    };
+    const app = createApp({ serviceWorker });
+    await flush();
+    assert.equal(app.elements.get('update-notice').hidden, true);
+    registrationEvents.updatefound();
+    worker.state = 'installed';
+    registration.waiting = worker;
+    workerEvents.statechange();
+    assert.equal(app.elements.get('update-notice').hidden, !controlled);
+  }
+});
+
+test('reports when the update can no longer be started', async () => {
+  const registration = { waiting: {}, addEventListener() {} };
+  const serviceWorker = { controller: {}, addEventListener() {}, register() { return Promise.resolve(registration); } };
+  const app = createApp({ serviceWorker });
+  await flush();
+  registration.waiting = null;
+  app.elements.get('update-app').click();
+  assert.match(app.elements.get('update-status').textContent, /no longer available/i);
 });

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'toddle-cation-v6';
+const CACHE_NAME = 'toddle-cation-v8';
 const APP_FILES = ['./', './index.html', './style.css', './manifest.webmanifest', './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', event => {
@@ -7,6 +7,10 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('toddle-cation-') && key !== CACHE_NAME).map(key => caches.delete(key)))));
+});
+
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('fetch', event => {
