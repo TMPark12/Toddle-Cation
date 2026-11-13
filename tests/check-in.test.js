@@ -19,8 +19,8 @@ function createApp(options = {}) {
       replaceChildren() { this.children = []; },
       focus() {},
       showModal() { this.open = true; },
-      close() { this.open = false; },
-      click() { if (!this.disabled) this.events.click(); }
+      close() { this.open = false; if (this.events.close) this.events.close(); },
+      click() { if (!this.disabled) return this.events.click(); }
     };
     if (id) elements.set(id, node);
     return node;
@@ -42,13 +42,13 @@ function createApp(options = {}) {
     removeItem(key) { if (options.storageError) throw new Error('Storage unavailable'); storage.delete(key); }
   };
   let request;
-  const navigator = { userAgent: '', platform: '' };
+  const navigator = { userAgent: options.userAgent || '', platform: options.platform || '', standalone: options.standalone || false };
   if (!options.noGeolocation) navigator.geolocation = {
     getCurrentPosition(success, failure, settings) { request = { success, failure, settings }; }
   };
   const window = {
     isSecureContext: options.secure !== false,
-    matchMedia() { return { matches: false }; },
+    matchMedia() { return { matches: !!options.standalone }; },
     addEventListener(name, callback) { handlers[name] = callback; },
     scrollTo() {}, close() {}, confirm() { return true; }
   };
@@ -99,6 +99,11 @@ function createApp(options = {}) {
     }
   };
   const downloads = [];
+  const sessionValues = options.sessionValues || new Map();
+  const sessionStorage = {
+    getItem(key) { return sessionValues.get(key) ?? null; },
+    setItem(key, value) { sessionValues.set(key, value); }
+  };
   const URL = { createObjectURL(blob) { downloads.push(blob); return 'blob:download'; }, revokeObjectURL() {} };
   const Blob = globalThis.Blob;
   const document = {
@@ -110,8 +115,8 @@ function createApp(options = {}) {
       return node;
     }
   };
-  vm.runInNewContext(script, { document, window, navigator, localStorage, indexedDB, URL, Blob, setTimeout, console: { error() {} } });
-  return { elements, feeling, color, storage, records, downloads, getRequest: () => request };
+  vm.runInNewContext(script, { document, window, navigator, localStorage, sessionStorage, indexedDB, URL, Blob, setTimeout, console: { error() {} } });
+  return { elements, feeling, color, storage, records, downloads, handlers, getRequest: () => request };
 }
 
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -233,4 +238,60 @@ test('install setup requests location only when asked and does not save it', () 
   app.getRequest().success(position());
   assert.match(app.elements.get('install-location-status').textContent, /location is available/i);
   assert.equal(app.records.length, 0);
+});
+
+test('install invitation appears once per session and not in standalone mode', () => {
+  const sessionValues = new Map();
+  const app = createApp({ sessionValues });
+  app.handlers.load();
+  assert.equal(app.elements.get('install-invitation').open, true);
+  app.elements.get('invite-dismiss').click();
+  assert.equal(app.elements.get('install-invitation').open, false);
+  const reloaded = createApp({ sessionValues });
+  reloaded.handlers.load();
+  assert.equal(reloaded.elements.get('install-invitation').open, undefined);
+  const installed = createApp({ standalone: true });
+  installed.handlers.load();
+  assert.equal(installed.elements.get('install-invitation').open, undefined);
+  assert.equal(installed.elements.get('install-button').hidden, true);
+});
+
+test('popup launches the native install prompt directly on user action', async () => {
+  const app = createApp();
+  let prompted = 0;
+  let prevented = false;
+  app.handlers.beforeinstallprompt({
+    preventDefault() { prevented = true; },
+    prompt() { prompted++; return Promise.resolve({ outcome: 'accepted' }); }
+  });
+  app.handlers.load();
+  app.elements.get('invite-install').click();
+  assert.equal(prevented, true);
+  assert.equal(prompted, 1);
+  await flush();
+  assert.match(app.elements.get('install-instructions').textContent, /installation started/i);
+  assert.equal(app.elements.get('install-dialog').open, true);
+  app.handlers.appinstalled();
+  assert.equal(app.elements.get('install-button').hidden, true);
+});
+
+test('install help appears immediately when native prompt is unavailable', () => {
+  const app = createApp({ userAgent: 'iPhone', platform: 'iPhone' });
+  app.handlers.load();
+  app.elements.get('invite-install').click();
+  assert.equal(app.elements.get('install-dialog').open, true);
+  assert.match(app.elements.get('install-instructions').textContent, /Share.*Add to Home Screen/);
+});
+
+test('dismissed and failed native prompts do not claim installation succeeded', async () => {
+  const dismissed = createApp();
+  dismissed.handlers.beforeinstallprompt({ preventDefault() {}, prompt() { return Promise.resolve({ outcome: 'dismissed' }); } });
+  await dismissed.elements.get('install-button').click();
+  assert.equal(dismissed.elements.get('install-dialog').open, undefined);
+  assert.equal(dismissed.elements.get('install-button').hidden, false);
+  const failed = createApp();
+  failed.handlers.beforeinstallprompt({ preventDefault() {}, prompt() { return Promise.reject(new Error('unavailable')); } });
+  await failed.elements.get('install-button').click();
+  assert.match(failed.elements.get('install-instructions').textContent, /could not open.*install/i);
+  assert.equal(failed.elements.get('install-dialog').open, true);
 });

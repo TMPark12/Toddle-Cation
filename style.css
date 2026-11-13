@@ -10,8 +10,8 @@ button:focus-visible { outline: 4px solid #194c9b; outline-offset: 4px; }
 .brand { display: flex; align-items: center; gap: 10px; font-family: Nunito, sans-serif; font-size: 19px; font-weight: 900; }
 .brand-mark { width: 34px; height: 34px; display: block; border-radius: 8px; object-fit: cover; }
 .header-actions { display: flex; align-items: center; gap: 18px; }
-.install-button { display: inline-flex; align-items: center; gap: 6px; min-height: 42px; padding: 0 10px; border: 0; border-radius: 6px; background: #e3f0e9; color: #276d61; font-size: 13px; font-weight: 700; cursor: pointer; }
-.install-button:hover { background: #d4e9dc; }
+.install-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 6px; background: #287c71; color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.install-button:hover { background: #20685e; }
 .install-button svg { width: 18px; height: 18px; }
 .step { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; font-weight: 700; }
 .step-dots { display: flex; gap: 5px; }
@@ -110,7 +110,8 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 }
 @media (max-width: 380px) {
   .header-actions { gap: 8px; }
-  .install-button span { display: none; }
+  .brand { font-size: 16px; }
+  .step-dots { display: none; }
   h1 { font-size: 29px; }
   .color-name { font-size: 12px; }
   .feeling-choice { min-height: 120px; }

@@ -17,7 +17,7 @@
     <header class="topbar">
       <div class="brand"><img class="brand-mark" src="./icons/icon-180.png" alt=""> Toddle-Cation</div>
       <div class="header-actions">
-        <button class="install-button" id="install-button" type="button" title="Install app" aria-label="Install app"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 17v3h14v-3"/></svg><span>Install</span></button>
+        <button class="install-button" id="install-button" type="button" aria-label="Install Toddle-Cation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 17v3h14v-3"/></svg><span>Install app</span></button>
         <div class="step"><span id="step-text">1 of 2</span><span class="step-dots" aria-hidden="true"><span id="dot-one" class="active"></span><span id="dot-two"></span></span></div>
       </div>
     </header>
@@ -89,13 +89,18 @@
     <h2 id="thanks-heading"><button class="thank-message" id="thank-message" type="button" aria-label="Thank You, hear again">Thank You</button></h2>
     <button class="close-thanks" id="close-thanks" type="button">Close</button>
   </dialog>
+  <dialog class="install-dialog" id="install-invitation" aria-labelledby="install-invitation-heading">
+    <h2 id="install-invitation-heading">Install Toddle-Cation</h2>
+    <p>Add the app to your home screen or app list for easy access, including offline use after opening it online.</p>
+    <button class="close-thanks" id="invite-install" type="button">Install app</button>
+    <button class="dialog-secondary" id="invite-dismiss" type="button">Not now</button>
+  </dialog>
   <dialog class="install-dialog" id="install-dialog" aria-labelledby="install-heading">
     <h2 id="install-heading">Install Toddle-Cation</h2>
-    <p>Allow location now for future check-ins. Your browser will ask for permission; you may also need to turn on location in your device settings.</p>
+    <p id="install-instructions" role="status"></p>
+    <p>Optional: allow location for future check-ins. Your browser will ask for permission; you may also need to turn on location in your device settings. The installed app may ask again.</p>
     <button class="dialog-secondary" id="install-location" type="button">Allow location</button>
     <p class="dialog-status" id="install-location-status" role="status" aria-live="polite"></p>
-    <p id="install-instructions"></p>
-    <button class="close-thanks" id="continue-install" type="button">Continue to install</button>
     <button class="close-thanks" id="install-done" type="button">Done</button>
   </dialog>
   <main class="closed" id="closed" hidden>
@@ -107,6 +112,7 @@
     const thanks = document.getElementById('thanks');
     const speechSupported = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
     const installButton = document.getElementById('install-button');
+    const installInvitation = document.getElementById('install-invitation');
     const installDialog = document.getElementById('install-dialog');
     const installLocationButton = document.getElementById('install-location');
     const installLocationStatus = document.getElementById('install-location-status');
@@ -125,7 +131,8 @@
     let installLocationRequest = 0;
     let savingCheckIn = false;
 
-    if ((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true) {
+    const isInstalled = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+    if (isInstalled) {
       installButton.hidden = true;
     }
     window.addEventListener('beforeinstallprompt', event => {
@@ -135,12 +142,53 @@
     window.addEventListener('appinstalled', () => {
       installPrompt = null;
       installButton.hidden = true;
+      if (installInvitation.open) installInvitation.close();
     });
-    installButton.addEventListener('click', () => {
+    document.getElementById('invite-install').addEventListener('click', () => {
+      installInvitation.close();
+      installButton.click();
+    });
+    document.getElementById('invite-dismiss').addEventListener('click', () => {
+      installInvitation.close();
+      speak('How do you feel?');
+    });
+    installInvitation.addEventListener('cancel', () => speak('How do you feel?'));
+    function showInstallHelp(instructions) {
       installLocationButton.disabled = false;
       installLocationStatus.textContent = '';
-      document.getElementById('install-instructions').textContent = '';
+      document.getElementById('install-instructions').textContent = instructions;
       installDialog.showModal();
+    }
+
+    function installInstructions() {
+      const appleMobile = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const appleComputer = /Mac/i.test(navigator.platform) && !appleMobile;
+      if (!window.isSecureContext) return 'To install, open this app from an HTTPS web address or localhost, then try again.';
+      if (appleMobile) return 'Tap Share in your browser, then choose Add to Home Screen. If you do not see it, open this page in Safari and try again.';
+      if (appleComputer) return 'In Safari, choose File, then Add to Dock. In Chrome or Edge, use the install icon in the address bar or the browser menu.';
+      return 'Open your browser menu and look for Install app or Add to Home screen. On a computer, Chrome or Edge may also show an install icon in the address bar. Installation depends on your browser.';
+    }
+
+    installButton.addEventListener('click', async () => {
+      if (!installPrompt) {
+        showInstallHelp(installInstructions());
+        return;
+      }
+      const prompt = installPrompt;
+      installPrompt = null;
+      installButton.disabled = true;
+      try {
+        const result = await prompt.prompt();
+        const choice = result || await prompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          showInstallHelp('Installation started. Open Toddle-Cation from your home screen or app list when it is ready.');
+        }
+      } catch (error) {
+        console.error('Unable to open the install prompt:', error);
+        showInstallHelp(`Could not open the install prompt. ${installInstructions()}`);
+      } finally {
+        installButton.disabled = false;
+      }
     });
     installDialog.addEventListener('close', () => { installLocationRequest++; });
     installLocationButton.addEventListener('click', () => {
@@ -162,27 +210,6 @@
           ? 'Location permission was denied. Allow location in your browser and device settings, then try again.'
           : 'Could not get your location. Check your device location settings and try again.';
       }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
-    });
-    document.getElementById('continue-install').addEventListener('click', async () => {
-      if (installPrompt) {
-        const prompt = installPrompt;
-        installPrompt = null;
-        try {
-          await prompt.prompt();
-          return;
-        } catch {}
-      }
-      const appleMobile = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      const appleComputer = /Mac/i.test(navigator.platform) && !appleMobile;
-      let instructions = 'Open your browser menu and choose Install app or Add to Home screen. On a computer, Chrome or Edge may also show an install icon in the address bar.';
-      if (!window.isSecureContext) {
-        instructions = 'To install, open this app from an HTTPS web address. Then use your browser menu to install it or add it to your home screen.';
-      } else if (appleMobile) {
-        instructions = 'Tap Share in your browser, then choose Add to Home Screen. On older iOS versions, open this page in Safari first.';
-      } else if (appleComputer) {
-        instructions = 'In Safari, choose File, then Add to Dock. In Chrome or Edge, use the install icon in the address bar or the browser menu.';
-      }
-      document.getElementById('install-instructions').textContent = instructions;
     });
     document.getElementById('install-done').addEventListener('click', () => installDialog.close());
     if ('serviceWorker' in navigator && window.isSecureContext) {
@@ -407,7 +434,22 @@
       document.getElementById('closed').hidden = false;
       document.getElementById('closed-heading').focus();
     });
-    window.addEventListener('load', () => speak('How do you feel?'));
+    window.addEventListener('load', () => {
+      if (!isInstalled) {
+        try {
+          if (!sessionStorage.getItem('toddle-cation-install-invited')) {
+            sessionStorage.setItem('toddle-cation-install-invited', 'yes');
+            installInvitation.showModal();
+            return;
+          }
+        } catch (error) {
+          console.error('Unable to remember install invitation:', error);
+          installInvitation.showModal();
+          return;
+        }
+      }
+      speak('How do you feel?');
+    });
   </script>
 </body>
 </html>
