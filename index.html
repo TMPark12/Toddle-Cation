@@ -133,7 +133,7 @@
       </section>
       <section class="demo-step" id="demo-step-5" aria-labelledby="demo-step-heading-5" hidden>
         <h3 id="demo-step-heading-5" tabindex="-1">5. Download or review</h3>
-        <p>After saving, <strong>Save and Download Check-In</strong> downloads a CSV with the date, time, mood, color, and notes. <strong>Close</strong> keeps the saved check-in on the device without downloading it.</p>
+        <p>After saving, <strong>Save and Download Check-In</strong> downloads a CSV with the date, time, mood, color, and notes. <strong>Close</strong> keeps the saved check-in on the device without downloading it. The download stays available in Saved check-ins after an app update.</p>
         <p>Choose <strong>Saved check-ins</strong> to review, export, or delete records. The full export includes location and device information, so keep it private. Records do not sync between devices or browsers.</p>
       </section>
     </div>
@@ -154,7 +154,7 @@
   </dialog>
   <dialog class="detail-dialog" id="history-dialog" aria-labelledby="history-heading">
     <h2 id="history-heading">Saved check-ins</h2>
-    <p>These are stored in this browser on this device, including notes, location and browser/device information.</p>
+    <p>These are stored in this browser on this device, including notes, location and browser/device information. Check-ins waiting to be downloaded stay queued through app updates.</p>
     <p>Export creates or replaces checkins/checkins.csv in a folder you choose when supported. Otherwise, checkins.csv downloads to your browser's download location.</p>
     <p class="dialog-status" id="history-status" role="status" aria-live="polite"></p>
     <ol class="history-list" id="history-list"></ol>
@@ -169,6 +169,13 @@
     <p class="dialog-status" id="download-check-in-status" role="status" aria-live="polite"></p>
     <button class="close-thanks" id="download-check-in" type="button">Save and Download Check-In</button>
     <button class="dialog-secondary" id="close-thanks" type="button">Close</button>
+  </dialog>
+  <dialog class="detail-dialog" id="download-choice-dialog" aria-labelledby="download-choice-heading">
+    <h2 id="download-choice-heading">You are appreciated</h2>
+    <p>Your check-in data is ready. Would you like to clear the downloaded data from this device or save it for later?</p>
+    <p class="dialog-status" id="download-choice-status" role="status" aria-live="polite"></p>
+    <button class="close-thanks" id="clear-downloaded-data" type="button">Clear downloaded data</button>
+    <button class="dialog-secondary" id="save-downloaded-data" type="button">Save for later</button>
   </dialog>
   <dialog class="install-dialog" id="install-invitation" aria-labelledby="install-invitation-heading">
     <h2 id="install-invitation-heading">Install Toddle-Cation</h2>
@@ -211,6 +218,7 @@
     let selectedColor = '';
     let pendingCheckIn = null;
     let savedCheckIn = null;
+    let savedCheckInKey;
     let locationRequest = 0;
     let installLocationRequest = 0;
     let savingCheckIn = false;
@@ -490,6 +498,39 @@
       }
     }
 
+    function clearDownloadCache(keys) {
+      if (keys.length === 0) return Promise.resolve();
+      return useCheckInDatabase('readwrite', store => {
+        let firstRequest;
+        keys.forEach(key => {
+          const request = store.get(key);
+          if (!firstRequest) firstRequest = request;
+          request.onsuccess = () => {
+            if (!request.result || !request.result.pendingDownload) return;
+            const savedEntry = { ...request.result };
+            delete savedEntry.pendingDownload;
+            store.put(savedEntry, key);
+          };
+        });
+        return firstRequest;
+      });
+    }
+
+    let downloadedCheckInKeys = [];
+    const downloadChoiceDialog = document.getElementById('download-choice-dialog');
+    const downloadChoiceStatus = document.getElementById('download-choice-status');
+    async function showDownloadChoice(keys, status) {
+      downloadedCheckInKeys = keys;
+      try {
+        await clearDownloadCache(keys);
+      } catch (error) {
+        console.error('Unable to clear the download queue:', error);
+        status.textContent = 'The download started, but its queue could not be cleared. The saved data is still available.';
+      }
+      downloadChoiceStatus.textContent = '';
+      downloadChoiceDialog.showModal();
+    }
+
     function cancelSave() {
       locationRequest++;
       pendingCheckIn = null;
@@ -521,7 +562,7 @@
           accuracyMeters: position.coords.accuracy
         };
         try {
-          await useCheckInDatabase('readwrite', store => store.add(checkIn));
+          savedCheckInKey = await useCheckInDatabase('readwrite', store => store.add({ ...checkIn, pendingDownload: true }));
         } catch (error) {
           console.error('Unable to save check-in:', error);
           locationStatus.textContent = 'Could not save on this device. Check your browser storage settings and try again.';
@@ -551,7 +592,10 @@
       historyDialog.showModal();
       try {
         const checkIns = await useCheckInDatabase('readonly', store => store.getAll());
-        historyStatus.textContent = '';
+        const pendingCount = checkIns.filter(checkIn => checkIn.pendingDownload).length;
+        historyStatus.textContent = pendingCount
+          ? `${pendingCount} check-in${pendingCount === 1 ? '' : 's'} waiting to be downloaded.`
+          : '';
         if (checkIns.length === 0) historyStatus.textContent = 'No saved check-ins yet.';
         checkIns.slice().reverse().forEach(checkIn => {
           const item = document.createElement('li');
@@ -610,7 +654,15 @@
         const directory = typeof window.showDirectoryPicker === 'function'
           ? await window.showDirectoryPicker({ mode: 'readwrite' })
           : null;
-        const checkIns = await useCheckInDatabase('readonly', store => store.getAll());
+        let downloadedKeys = [];
+        const checkIns = await useCheckInDatabase('readonly', store => {
+          const request = store.getAll();
+          request.onsuccess = () => {
+            const keysRequest = store.getAllKeys();
+            keysRequest.onsuccess = () => { downloadedKeys = keysRequest.result; };
+          };
+          return request;
+        });
         if (checkIns.length === 0) {
           historyStatus.textContent = 'No saved check-ins to download.';
           return;
@@ -627,6 +679,8 @@
           downloadCsv(file, 'checkins.csv');
           historyStatus.textContent = 'Download started. Find checkins.csv in your browser’s downloads and move it to a checkins folder if you wish.';
         }
+        historyStatus.textContent += ' Choose whether to clear or keep these downloaded records.';
+        await showDownloadChoice(downloadedKeys, historyStatus);
       } catch (error) {
         if (error.name === 'AbortError') {
           historyStatus.textContent = 'Export cancelled.';
@@ -635,6 +689,34 @@
         console.error('Unable to download check-ins:', error);
         historyStatus.textContent = 'Could not export check-ins. Check folder permissions and browser storage settings, then try again.';
       }
+    });
+    document.getElementById('clear-downloaded-data').addEventListener('click', async () => {
+      const status = downloadChoiceStatus;
+      try {
+        if (downloadedCheckInKeys.length) {
+          await useCheckInDatabase('readwrite', store => {
+            let firstRequest;
+            downloadedCheckInKeys.slice().sort((first, second) => second - first).forEach(key => {
+              const request = store.delete(key);
+              if (!firstRequest) firstRequest = request;
+            });
+            return firstRequest;
+          });
+        }
+        if (downloadedCheckInKeys.includes(savedCheckInKey)) {
+          savedCheckIn = null;
+          savedCheckInKey = undefined;
+        }
+        downloadChoiceDialog.close();
+        historyStatus.textContent = 'Downloaded check-in data cleared from this device.';
+      } catch (error) {
+        console.error('Unable to clear downloaded check-ins:', error);
+        status.textContent = 'Could not clear the downloaded data. It is still saved on this device.';
+      }
+    });
+    document.getElementById('save-downloaded-data').addEventListener('click', () => {
+      downloadChoiceDialog.close();
+      historyStatus.textContent = 'Downloaded check-ins remain saved on this device for later.';
     });
     document.getElementById('clear-history').addEventListener('click', async () => {
       if (!window.confirm('Delete all saved check-ins from this browser?')) return;
@@ -704,7 +786,7 @@
     });
     document.getElementById('back').addEventListener('click', () => showScreen(1));
     document.getElementById('thank-message').addEventListener('click', () => speak('Thank you!'));
-    document.getElementById('download-check-in').addEventListener('click', () => {
+    document.getElementById('download-check-in').addEventListener('click', async () => {
       const status = document.getElementById('download-check-in-status');
       if (!savedCheckIn) {
         status.textContent = 'No saved check-in is available to download.';
@@ -712,7 +794,8 @@
       }
       try {
         downloadCsv(checkInsCsv([savedCheckIn], true), 'check-in.csv');
-        status.textContent = 'Download started. Your check-in is also saved on this device.';
+        status.textContent = 'Download started.';
+        await showDownloadChoice([savedCheckInKey], status);
       } catch (error) {
         console.error('Unable to download check-in:', error);
         status.textContent = 'Could not download the check-in. It is still saved on this device.';

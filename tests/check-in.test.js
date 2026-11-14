@@ -104,9 +104,11 @@ function createApp(options = {}) {
         return {
           add(value) { return execute(() => { records.push(value); return records.length; }); },
           getAll() { return execute(() => records.slice()); },
-          clear() { return execute(() => { records.length = 0; }); },
-          get(key) { return execute(() => metadata.get(key)); },
-          put(value, key) { return execute(() => metadata.set(key, value)); }
+          getAllKeys() { return execute(() => records.map((_, index) => index + 1)); },
+          get(key) { return execute(() => name === 'metadata' ? metadata.get(key) : records[key - 1]); },
+          put(value, key) { return execute(() => name === 'metadata' ? metadata.set(key, value) : (records[key - 1] = value, key)); },
+          delete(key) { return execute(() => { records.splice(key - 1, 1); }); },
+          clear() { return execute(() => { records.length = 0; }); }
         };
       };
       return transaction;
@@ -324,13 +326,18 @@ test('final popup downloads only the saved check-in and close keeps it saved', a
   app.elements.get('save-check-in').click();
   app.getRequest().success(position());
   await flush();
-  app.elements.get('download-check-in').click();
+  await app.elements.get('download-check-in').click();
   const csv = await app.downloads[0].text();
   assert.deepEqual(app.downloadLinks, ['check-in.csv']);
   const saved = app.records[1];
   assert.equal(csv, `"Local date","Local time","Mood","Color","Notes"\r\n"${saved.localDate.replace(/"/g, '""')}","${saved.localTime.replace(/"/g, '""')}","Happy","Blue","'=""quoted"", note"`);
   assert.equal(app.records.length, 2);
+  assert.equal(app.records[1].pendingDownload, undefined);
   assert.match(app.elements.get('download-check-in-status').textContent, /download started/i);
+  assert.equal(app.elements.get('download-choice-dialog').open, true);
+  assert.match(html, /<h2 id="download-choice-heading">You are appreciated<\/h2>/);
+  app.elements.get('save-downloaded-data').click();
+  assert.equal(app.records.length, 2);
   app.elements.get('close-thanks').click();
   assert.equal(app.records.length, 2);
   assert.equal(app.elements.get('closed').hidden, false);
@@ -342,10 +349,26 @@ test('download failure leaves the check-in saved and reports an error', async ()
   app.elements.get('save-check-in').click();
   app.getRequest().success(position());
   await flush();
-  app.elements.get('download-check-in').click();
+  await app.elements.get('download-check-in').click();
   assert.equal(app.records.length, 1);
+  assert.equal(app.records[0].pendingDownload, true);
   assert.equal(app.elements.get('thanks').open, true);
   assert.match(app.elements.get('download-check-in-status').textContent, /could not download.*still saved/i);
+});
+
+test('clearing downloaded data removes only the downloaded check-in', async () => {
+  const app = createApp();
+  app.records.push({ feeling: 'Earlier', color: 'Red' });
+  select(app);
+  app.elements.get('save-check-in').click();
+  app.getRequest().success(position());
+  await flush();
+  await app.elements.get('download-check-in').click();
+  app.elements.get('clear-downloaded-data').click();
+  await flush();
+  assert.equal(app.records.length, 1);
+  assert.equal(app.records[0].feeling, 'Earlier');
+  assert.equal(app.elements.get('download-choice-dialog').open, false);
 });
 
 test('saves feeling, color, local time and location only after permission succeeds', async () => {
@@ -383,6 +406,9 @@ test('saves feeling, color, local time and location only after permission succee
   assert.match(csv, /"Happy","Blue","Example Device Browser","42\.12","-71\.34","10".*"Talked about the playground\."/);
   assert.match(csv, /"Happy","Blue","Example Device Browser","42\.12","-71\.34","10"/);
   assert.deepEqual(app.downloadLinks, ['checkins.csv']);
+  await flush();
+  assert.equal(app.records[0].pendingDownload, undefined);
+  app.elements.get('save-downloaded-data').click();
   app.elements.get('clear-history').click();
   await flush();
   assert.equal(app.records.length, 0);
@@ -416,6 +442,10 @@ test('exports all entries to a checkins folder in the selected directory', async
   assert.match(written, /"2026-01-01","22:04:05","Sad","Red","Not recorded","1","2","3"/);
   assert.match(app.elements.get('history-status').textContent, /saved checkins\/checkins\.csv/i);
   assert.equal(app.downloads.length, 0);
+  assert.equal(app.elements.get('download-choice-dialog').open, true);
+  app.elements.get('clear-downloaded-data').click();
+  await flush();
+  assert.equal(app.records.length, 0);
 });
 
 test('folder selection cancellation and permission errors are reported without deleting check-ins', async () => {
@@ -596,12 +626,20 @@ test('offers a waiting update, applies it on request, and keeps saved check-ins'
   await flush();
   assert.equal(app.records.length, 1);
   assert.equal(app.elements.get('update-notice').hidden, false);
+  assert.equal(app.records[0].pendingDownload, true);
   app.elements.get('update-app').click();
   assert.deepEqual(messages, ['SKIP_WAITING']);
   assert.equal(reloaded, false);
   serviceEvents.controllerchange();
   assert.equal(reloaded, true);
   assert.equal(app.records.length, 1);
+  app.elements.get('open-history').click();
+  await flush();
+  assert.match(app.elements.get('history-status').textContent, /waiting to be downloaded/i);
+  await app.elements.get('download-history').click();
+  assert.equal(app.records[0].pendingDownload, undefined);
+  assert.equal(app.records.length, 1);
+  app.elements.get('save-downloaded-data').click();
 });
 
 test('offers a newly installed update but not a first offline installation', async () => {
