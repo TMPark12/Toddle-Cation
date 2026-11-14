@@ -10,12 +10,16 @@ function createApp(options = {}) {
   const elements = new Map();
   function element(id = '') {
     const node = {
-      id, hidden: false, disabled: false, textContent: '', dataset: {}, attributes: {}, children: [], events: {},
+      id, hidden: false, disabled: false, textContent: '', value: '', dataset: {}, attributes: {}, children: [], events: {},
       classList: { toggle() {} },
       addEventListener(name, callback) { this.events[name] = callback; },
       setAttribute(name, value) { this.attributes[name] = value; },
       getAttribute(name) { return this.attributes[name]; },
-      appendChild(child) { this.children.push(child); },
+      appendChild(child) {
+        if (child.parentNode) child.parentNode.children.splice(child.parentNode.children.indexOf(child), 1);
+        this.children.push(child);
+        child.parentNode = this;
+      },
       replaceChildren() { this.children = []; },
       focus() {},
       showModal() { this.open = true; },
@@ -31,8 +35,22 @@ function createApp(options = {}) {
   }
   const feeling = element();
   feeling.lastChild = { textContent: 'Happy' };
+  const sadFeeling = element();
+  sadFeeling.lastChild = { textContent: 'Sad' };
+  const madFeeling = element();
+  madFeeling.lastChild = { textContent: 'Mad' };
+  const feelings = element();
+  const feelingChoices = [feeling, sadFeeling, madFeeling];
+  feelingChoices.forEach(choice => feelings.appendChild(choice));
   const color = element();
   color.attributes['aria-label'] = 'Blue';
+  const redColor = element();
+  redColor.attributes['aria-label'] = 'Red';
+  const yellowColor = element();
+  yellowColor.attributes['aria-label'] = 'Yellow';
+  const colorChoices = [color, redColor, yellowColor];
+  const colors = element();
+  colorChoices.forEach(choice => colors.appendChild(choice));
   const sound = element();
   const handlers = {};
   const storage = new Map();
@@ -111,19 +129,26 @@ function createApp(options = {}) {
     getItem(key) { return sessionValues.get(key) ?? null; },
     setItem(key, value) { sessionValues.set(key, value); }
   };
-  const URL = { createObjectURL(blob) { downloads.push(blob); return 'blob:download'; }, revokeObjectURL() {} };
+  const URL = { createObjectURL(blob) { if (options.downloadError) throw new Error('Download unavailable'); downloads.push(blob); return 'blob:download'; }, revokeObjectURL() {} };
   const Blob = globalThis.Blob;
   const document = {
     getElementById(id) { assert(elements.has(id), `Missing ${id}`); return elements.get(id); },
-    querySelectorAll(selector) { return { '.feeling-choice': [feeling], '.color-choice': [color], '.sound': [sound] }[selector]; },
+    querySelector(selector) { return { '.feelings': feelings, '.colors': colors }[selector] || null; },
+    querySelectorAll(selector) { return { '.feeling-choice': feelingChoices, '.color-choice': colorChoices, '.sound': [sound] }[selector]; },
     createElement(tag) {
       const node = element();
       if (tag === 'a') node.click = () => { downloadLinks.push(node.download); };
       return node;
     }
   };
-  vm.runInNewContext(script, { document, window, navigator, localStorage, sessionStorage, indexedDB, URL, Blob, setTimeout, clearTimeout, console: { error() {} } });
-  return { elements, feeling, color, storage, records, downloads, downloadLinks, handlers, getRequest: () => request };
+  const testMath = Object.assign(Object.create(Math), { random: () => 0 });
+  vm.runInNewContext(script, { document, window, navigator, localStorage, sessionStorage, indexedDB, URL, Blob, Math: testMath, setTimeout, clearTimeout, console: { error() {} } });
+  return {
+    elements, feeling, color, storage, records, downloads, downloadLinks, handlers,
+    feelingOrder: feelings.children.map(choice => choice.lastChild.textContent),
+    colorOrder: colors.children.map(choice => choice.getAttribute('aria-label')),
+    getRequest: () => request
+  };
 }
 
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -131,14 +156,87 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
 function select(app) {
   app.feeling.click();
   app.color.click();
+  app.elements.get('continue-to-save').click();
 }
 
 function position() {
   return { coords: { latitude: 42.12, longitude: -71.34, accuracy: 10 } };
 }
 
+test('shuffles the feeling choices on load while keeping each emoji paired with its label', () => {
+  const app = createApp();
+  assert.deepEqual(app.feelingOrder, ['Sad', 'Mad', 'Happy']);
+});
+
+test('shuffles the color choices on load while keeping each swatch paired with its label', () => {
+  const app = createApp();
+  assert.deepEqual(app.colorOrder, ['Red', 'Yellow', 'Blue']);
+});
+
+test('collects optional device owner notes on a third step before requesting location', () => {
+  const app = createApp();
+  app.feeling.click();
+  assert.equal(app.elements.get('step-text').textContent, '2 of 3');
+  app.color.click();
+  assert.equal(app.elements.get('step-text').textContent, '3 of 3');
+  assert.equal(app.elements.get('notes-screen').hidden, false);
+  assert.equal(app.elements.get('location-dialog').open, undefined);
+  app.elements.get('back-to-colors').click();
+  assert.equal(app.elements.get('colors-screen').hidden, false);
+  app.color.click();
+  app.elements.get('continue-to-save').click();
+  assert.equal(app.elements.get('location-dialog').open, true);
+  assert.equal(app.elements.get('owner-notes').value, '');
+});
+
+test('skipping notes continues to save with an empty notes field', async () => {
+  const app = createApp();
+  app.feeling.click();
+  app.color.click();
+  app.elements.get('owner-notes').value = 'Do not include this note.';
+  app.elements.get('skip-notes').click();
+  assert.equal(app.elements.get('location-dialog').open, true);
+  app.elements.get('save-check-in').click();
+  app.getRequest().success(position());
+  await flush();
+  assert.equal(app.records[0].notes, '');
+});
+
+test('final popup downloads only the saved check-in and close keeps it saved', async () => {
+  const app = createApp();
+  app.records.push({ feeling: 'Earlier', color: 'Red' });
+  app.elements.get('owner-notes').value = '="quoted", note';
+  select(app);
+  app.elements.get('save-check-in').click();
+  app.getRequest().success(position());
+  await flush();
+  app.elements.get('download-check-in').click();
+  const csv = await app.downloads[0].text();
+  assert.deepEqual(app.downloadLinks, ['check-in.csv']);
+  const saved = app.records[1];
+  assert.equal(csv, `"Local date","Local time","Mood","Color","Notes"\r\n"${saved.localDate.replace(/"/g, '""')}","${saved.localTime.replace(/"/g, '""')}","Happy","Blue","'=""quoted"", note"`);
+  assert.equal(app.records.length, 2);
+  assert.match(app.elements.get('download-check-in-status').textContent, /download started/i);
+  app.elements.get('close-thanks').click();
+  assert.equal(app.records.length, 2);
+  assert.equal(app.elements.get('closed').hidden, false);
+});
+
+test('download failure leaves the check-in saved and reports an error', async () => {
+  const app = createApp({ downloadError: true });
+  select(app);
+  app.elements.get('save-check-in').click();
+  app.getRequest().success(position());
+  await flush();
+  app.elements.get('download-check-in').click();
+  assert.equal(app.records.length, 1);
+  assert.equal(app.elements.get('thanks').open, true);
+  assert.match(app.elements.get('download-check-in-status').textContent, /could not download.*still saved/i);
+});
+
 test('saves feeling, color, local time and location only after permission succeeds', async () => {
   const app = createApp({ userAgent: 'Example Device Browser' });
+  app.elements.get('owner-notes').value = 'Talked about the playground.';
   select(app);
   assert.equal(app.elements.get('location-dialog').open, true);
   assert.equal(app.records.length, 0);
@@ -149,6 +247,7 @@ test('saves feeling, color, local time and location only after permission succee
   const [entry] = app.records;
   assert.equal(entry.feeling, 'Happy');
   assert.equal(entry.color, 'Blue');
+  assert.equal(entry.notes, 'Talked about the playground.');
   assert.ok(entry.localDate);
   assert.ok(entry.localTime);
   assert.equal(entry.device, 'Example Device Browser');
@@ -161,11 +260,13 @@ test('saves feeling, color, local time and location only after permission succee
   assert.equal(app.elements.get('thanks').open, true);
   app.elements.get('open-history').click();
   await flush();
-  assert.match(app.elements.get('history-list').children[0].textContent, /Happy, Blue.*42\.12, -71\.34/);
+  assert.match(app.elements.get('history-list').children[0].textContent, /Happy, Blue\. Notes: Talked about the playground\..*42\.12, -71\.34/);
   app.elements.get('download-history').click();
   await flush();
   const csv = await app.downloads[0].text();
   assert.match(csv, /Local date","Local time","Mood","Color","Device \/ browser/);
+  assert.match(csv, /"UTC minus local offset minutes","Notes"/);
+  assert.match(csv, /"Happy","Blue","Example Device Browser","42\.12","-71\.34","10".*"Talked about the playground\."/);
   assert.match(csv, /"Happy","Blue","Example Device Browser","42\.12","-71\.34","10"/);
   assert.deepEqual(app.downloadLinks, ['checkins.csv']);
   app.elements.get('clear-history').click();

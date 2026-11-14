@@ -18,7 +18,7 @@
       <div class="brand"><img class="brand-mark" src="./icons/icon-180.png" alt=""> Toddle-Cation</div>
       <div class="header-actions">
         <button class="install-button" id="install-button" type="button" aria-label="Install Toddle-Cation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 17v3h14v-3"/></svg><span>Install app</span></button>
-        <div class="step"><span id="step-text">1 of 2</span><span class="step-dots" aria-hidden="true"><span id="dot-one" class="active"></span><span id="dot-two"></span></span></div>
+        <div class="step"><span id="step-text">1 of 3</span><span class="step-dots" aria-hidden="true"><span id="dot-one" class="active"></span><span id="dot-two"></span><span id="dot-three"></span></span></div>
       </div>
     </header>
     <aside class="update-notice" id="update-notice" aria-label="App update" hidden>
@@ -31,7 +31,7 @@
         <div class="heading">
           <h1 id="feelings-heading" tabindex="-1">How do you feel?</h1>
           <p class="subtitle">Pick the face that feels like you.</p>
-          <p class="privacy-notice">With location permission, your check-in, location and browser/device information will be saved on this device.</p>
+          <p class="privacy-notice">With location permission, your check-in, notes, location and browser/device information will be saved on this device.</p>
           <button class="sound" type="button" data-speech="How do you feel?" aria-label="Listen to the question: How do you feel?">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15 9a5 5 0 0 1 0 6M18 6a9 9 0 0 1 0 12"/></svg> Hear the question
           </button>
@@ -52,14 +52,14 @@
         <div class="color-wheel">
           <div class="question-circle"><h1 id="colors-heading" tabindex="-1">What color matches how you feel?</h1></div>
           <div class="colors">
-          <button class="color-choice" type="button" aria-label="Red"><span class="swatch"></span><span class="color-name">Red</span></button>
-          <button class="color-choice" type="button" aria-label="Blue"><span class="swatch"></span><span class="color-name">Blue</span></button>
-          <button class="color-choice" type="button" aria-label="Yellow"><span class="swatch"></span><span class="color-name">Yellow</span></button>
-          <button class="color-choice" type="button" aria-label="Black"><span class="swatch"></span><span class="color-name">Black</span></button>
-          <button class="color-choice" type="button" aria-label="White"><span class="swatch"></span><span class="color-name">White</span></button>
-          <button class="color-choice" type="button" aria-label="Orange"><span class="swatch"></span><span class="color-name">Orange</span></button>
-          <button class="color-choice" type="button" aria-label="Green"><span class="swatch"></span><span class="color-name">Green</span></button>
-          <button class="color-choice" type="button" aria-label="Purple"><span class="swatch"></span><span class="color-name">Purple</span></button>
+          <button class="color-choice" data-color="red" type="button" aria-label="Red"><span class="swatch"></span><span class="color-name">Red</span></button>
+          <button class="color-choice" data-color="blue" type="button" aria-label="Blue"><span class="swatch"></span><span class="color-name">Blue</span></button>
+          <button class="color-choice" data-color="yellow" type="button" aria-label="Yellow"><span class="swatch"></span><span class="color-name">Yellow</span></button>
+          <button class="color-choice" data-color="black" type="button" aria-label="Black"><span class="swatch"></span><span class="color-name">Black</span></button>
+          <button class="color-choice" data-color="white" type="button" aria-label="White"><span class="swatch"></span><span class="color-name">White</span></button>
+          <button class="color-choice" data-color="orange" type="button" aria-label="Orange"><span class="swatch"></span><span class="color-name">Orange</span></button>
+          <button class="color-choice" data-color="green" type="button" aria-label="Green"><span class="swatch"></span><span class="color-name">Green</span></button>
+          <button class="color-choice" data-color="purple" type="button" aria-label="Purple"><span class="swatch"></span><span class="color-name">Purple</span></button>
           </div>
         </div>
         <div class="color-prompt">
@@ -70,19 +70,34 @@
         </div>
         <button class="back" id="back" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg> Back to feelings</button>
       </section>
+      <section id="notes-screen" aria-labelledby="notes-heading" hidden>
+        <div class="notes-panel">
+          <h1 id="notes-heading" tabindex="-1">Anything else to note?</h1>
+          <p class="subtitle">Device owner notes are saved with this check-in and included in the CSV export.</p>
+          <label for="owner-notes">Device owner notes (optional)</label>
+          <textarea id="owner-notes" maxlength="1000" rows="6"></textarea>
+          <div class="notes-actions">
+            <button class="back" id="back-to-colors" type="button">Back to colors</button>
+            <div class="notes-continue-actions">
+              <button class="close-thanks" id="continue-to-save" type="button">Continue to save</button>
+              <button class="dialog-secondary" id="skip-notes" type="button">Skip notes and continue</button>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
     <footer><button class="history-button" id="open-history" type="button">Saved check-ins</button><br>Made for little feelings and big conversations.</footer>
   </div>
   <dialog class="detail-dialog" id="location-dialog" aria-labelledby="location-heading" aria-describedby="location-description">
     <h2 id="location-heading">Save this check-in?</h2>
-    <p id="location-description">An adult can allow location to save the feeling, color, local date and time, device location, and browser/device information on this device. Location is required to save.</p>
+    <p id="location-description">An adult can allow location to save the feeling, color, notes, local date and time, device location, and browser/device information on this device. Location is required to save.</p>
     <p class="dialog-status" id="location-status" role="status" aria-live="polite"></p>
     <button class="close-thanks" id="save-check-in" type="button">Allow location and save</button>
     <button class="dialog-secondary" id="cancel-save" type="button">Cancel</button>
   </dialog>
   <dialog class="detail-dialog" id="history-dialog" aria-labelledby="history-heading">
     <h2 id="history-heading">Saved check-ins</h2>
-    <p>These are stored in this browser on this device, including location and browser/device information.</p>
+    <p>These are stored in this browser on this device, including notes, location and browser/device information.</p>
     <p>Export creates or replaces checkins/checkins.csv in a folder you choose when supported. Otherwise, checkins.csv downloads to your browser's download location.</p>
     <p class="dialog-status" id="history-status" role="status" aria-live="polite"></p>
     <ol class="history-list" id="history-list"></ol>
@@ -93,7 +108,10 @@
   <dialog id="thanks" aria-labelledby="thanks-heading">
     <span class="thank-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></span>
     <h2 id="thanks-heading"><button class="thank-message" id="thank-message" type="button" aria-label="Thank You, hear again">Thank You</button></h2>
-    <button class="close-thanks" id="close-thanks" type="button">Close</button>
+    <p>Your check-in has been saved on this device.</p>
+    <p class="dialog-status" id="download-check-in-status" role="status" aria-live="polite"></p>
+    <button class="close-thanks" id="download-check-in" type="button">Save and Download Check-In</button>
+    <button class="dialog-secondary" id="close-thanks" type="button">Close</button>
   </dialog>
   <dialog class="install-dialog" id="install-invitation" aria-labelledby="install-invitation-heading">
     <h2 id="install-invitation-heading">Install Toddle-Cation</h2>
@@ -115,6 +133,7 @@
   <script>
     const feelingsScreen = document.getElementById('feelings-screen');
     const colorsScreen = document.getElementById('colors-screen');
+    const notesScreen = document.getElementById('notes-screen');
     const thanks = document.getElementById('thanks');
     const speechSupported = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
     const installButton = document.getElementById('install-button');
@@ -132,7 +151,9 @@
     const legacyStorageKey = 'toddle-cation-check-ins';
     let installPrompt = null;
     let selectedFeeling = '';
+    let selectedColor = '';
     let pendingCheckIn = null;
+    let savedCheckIn = null;
     let locationRequest = 0;
     let installLocationRequest = 0;
     let savingCheckIn = false;
@@ -290,13 +311,15 @@
       window.speechSynthesis.speak(utterance);
     }
 
-    function showScreen(showColors) {
-      feelingsScreen.hidden = showColors;
-      colorsScreen.hidden = !showColors;
-      document.getElementById('step-text').textContent = showColors ? '2 of 2' : '1 of 2';
-      document.getElementById('dot-one').classList.toggle('active', !showColors);
-      document.getElementById('dot-two').classList.toggle('active', showColors);
-      const heading = document.getElementById(showColors ? 'colors-heading' : 'feelings-heading');
+    function showScreen(step) {
+      feelingsScreen.hidden = step !== 1;
+      colorsScreen.hidden = step !== 2;
+      notesScreen.hidden = step !== 3;
+      document.getElementById('step-text').textContent = `${step} of 3`;
+      document.getElementById('dot-one').classList.toggle('active', step === 1);
+      document.getElementById('dot-two').classList.toggle('active', step === 2);
+      document.getElementById('dot-three').classList.toggle('active', step === 3);
+      const heading = document.getElementById(['feelings-heading', 'colors-heading', 'notes-heading'][step - 1]);
       heading.focus();
       window.scrollTo(0, 0);
       speak(heading.textContent);
@@ -371,13 +394,14 @@
         savingCheckIn = true;
         cancelSaveButton.disabled = true;
         locationStatus.textContent = 'Saving your check-in...';
+        const checkIn = {
+          ...pendingCheckIn,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracyMeters: position.coords.accuracy
+        };
         try {
-          await useCheckInDatabase('readwrite', store => store.add({
-            ...pendingCheckIn,
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracyMeters: position.coords.accuracy
-          }));
+          await useCheckInDatabase('readwrite', store => store.add(checkIn));
         } catch (error) {
           console.error('Unable to save check-in:', error);
           locationStatus.textContent = 'Could not save on this device. Check your browser storage settings and try again.';
@@ -387,6 +411,8 @@
           savingCheckIn = false;
           cancelSaveButton.disabled = false;
         }
+        savedCheckIn = checkIn;
+        document.getElementById('download-check-in-status').textContent = '';
         cancelSave();
         thanks.showModal();
         speak('Thank you!');
@@ -409,7 +435,8 @@
         if (checkIns.length === 0) historyStatus.textContent = 'No saved check-ins yet.';
         checkIns.slice().reverse().forEach(checkIn => {
           const item = document.createElement('li');
-          item.textContent = `${checkIn.localDateTime} — ${checkIn.feeling}, ${checkIn.color}. Location: ${checkIn.latitude}, ${checkIn.longitude} (accuracy: ${Math.round(checkIn.accuracyMeters)} m).`;
+          const notes = checkIn.notes ? ` Notes: ${checkIn.notes}` : '';
+          item.textContent = `${checkIn.localDateTime} — ${checkIn.feeling}, ${checkIn.color}.${notes} Location: ${checkIn.latitude}, ${checkIn.longitude} (accuracy: ${Math.round(checkIn.accuracyMeters)} m).`;
           historyList.appendChild(item);
         });
       } catch (error) {
@@ -417,6 +444,47 @@
         historyStatus.textContent = 'Could not read saved check-ins. Check your browser storage settings.';
       }
     });
+    function checkInsCsv(checkIns, summaryOnly = false) {
+      const rows = [
+        [
+          'Local date', 'Local time', 'Mood', 'Color',
+          ...(summaryOnly ? [] : ['Device / browser', 'Latitude', 'Longitude', 'Accuracy meters', 'UTC timestamp', 'UTC minus local offset minutes']),
+          'Notes'
+        ],
+        ...checkIns.map(entry => {
+          const timestamp = Date.parse(entry.timestamp);
+          const legacyDate = Number.isFinite(timestamp) && Number.isFinite(entry.timeZoneOffsetMinutes)
+            ? new Date(timestamp - entry.timeZoneOffsetMinutes * 60000).toISOString()
+            : '';
+          return [
+            entry.localDate || legacyDate.slice(0, 10) || entry.localDateTime || '',
+            entry.localTime || legacyDate.slice(11, 19),
+            entry.feeling, entry.color,
+            ...(summaryOnly ? [] : [entry.device || 'Not recorded', entry.latitude, entry.longitude, entry.accuracyMeters, entry.timestamp ?? '', entry.timeZoneOffsetMinutes ?? '']),
+            entry.notes ?? ''
+          ];
+        })
+      ];
+      const csv = rows.map(row => row.map(value => {
+        const text = String(value);
+        const safe = typeof value === 'string' && /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
+        return `"${safe.replace(/"/g, '""')}"`;
+      }).join(',')).join('\r\n');
+      return new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8' });
+    }
+
+    function downloadCsv(file, filename) {
+      const url = URL.createObjectURL(file);
+      try {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.click();
+      } finally {
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+    }
+
     document.getElementById('download-history').addEventListener('click', async () => {
       try {
         const directory = typeof window.showDirectoryPicker === 'function'
@@ -427,27 +495,7 @@
           historyStatus.textContent = 'No saved check-ins to download.';
           return;
         }
-        const rows = [
-          ['Local date', 'Local time', 'Mood', 'Color', 'Device / browser', 'Latitude', 'Longitude', 'Accuracy meters', 'UTC timestamp', 'UTC minus local offset minutes'],
-          ...checkIns.map(entry => {
-            const timestamp = Date.parse(entry.timestamp);
-            const legacyDate = Number.isFinite(timestamp) && Number.isFinite(entry.timeZoneOffsetMinutes)
-              ? new Date(timestamp - entry.timeZoneOffsetMinutes * 60000).toISOString()
-              : '';
-            return [
-              entry.localDate || legacyDate.slice(0, 10) || entry.localDateTime || '',
-              entry.localTime || legacyDate.slice(11, 19),
-              entry.feeling, entry.color, entry.device || 'Not recorded',
-              entry.latitude, entry.longitude, entry.accuracyMeters, entry.timestamp ?? '', entry.timeZoneOffsetMinutes ?? ''
-            ];
-          })
-        ];
-        const csv = rows.map(row => row.map(value => {
-          const text = String(value);
-          const safe = typeof value === 'string' && /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
-          return `"${safe.replace(/"/g, '""')}"`;
-        }).join(',')).join('\r\n');
-        const file = new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8' });
+        const file = checkInsCsv(checkIns);
         if (directory) {
           const folder = await directory.getDirectoryHandle('checkins', { create: true });
           const handle = await folder.getFileHandle('checkins.csv', { create: true });
@@ -456,12 +504,7 @@
           await writable.close();
           historyStatus.textContent = 'Saved checkins/checkins.csv in your chosen folder.';
         } else {
-          const url = URL.createObjectURL(file);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = 'checkins.csv';
-          link.click();
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          downloadCsv(file, 'checkins.csv');
           historyStatus.textContent = 'Download started. Find checkins.csv in your browser’s downloads and move it to a checkins folder if you wish.';
         }
       } catch (error) {
@@ -493,17 +536,34 @@
         button.textContent = 'Voice unavailable in this browser';
       }
     });
-    const feelingChoices = document.querySelectorAll('.feeling-choice');
+    function shuffleChoices(container) {
+      const choices = Array.from(container.children);
+      for (let i = choices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [choices[i], choices[j]] = [choices[j], choices[i]];
+      }
+      choices.forEach(choice => container.appendChild(choice));
+      return choices;
+    }
+
+    const feelingChoices = shuffleChoices(document.querySelector('.feelings'));
     feelingChoices.forEach(button => button.addEventListener('click', () => {
       selectedFeeling = button.lastChild.textContent.trim();
       feelingChoices.forEach(choice => choice.setAttribute('aria-pressed', String(choice === button)));
-      showScreen(true);
+      showScreen(2);
     }));
-    document.querySelectorAll('.color-choice').forEach(button => button.addEventListener('click', () => {
+    const colorChoices = shuffleChoices(document.querySelector('.colors'));
+    colorChoices.forEach(button => button.addEventListener('click', () => {
+      selectedColor = button.getAttribute('aria-label');
+      showScreen(3);
+    }));
+    document.getElementById('back-to-colors').addEventListener('click', () => showScreen(2));
+    function continueToSave(includeNotes) {
       const date = new Date();
       pendingCheckIn = {
         feeling: selectedFeeling,
-        color: button.getAttribute('aria-label'),
+        color: selectedColor,
+        notes: includeNotes ? document.getElementById('owner-notes').value.trim() : '',
         localDate: date.toLocaleDateString(),
         localTime: date.toLocaleTimeString(),
         localDateTime: date.toLocaleString(),
@@ -514,9 +574,25 @@
       saveButton.disabled = false;
       locationStatus.textContent = '';
       locationDialog.showModal();
-    }));
-    document.getElementById('back').addEventListener('click', () => showScreen(false));
+    }
+    document.getElementById('continue-to-save').addEventListener('click', () => continueToSave(true));
+    document.getElementById('skip-notes').addEventListener('click', () => continueToSave(false));
+    document.getElementById('back').addEventListener('click', () => showScreen(1));
     document.getElementById('thank-message').addEventListener('click', () => speak('Thank you!'));
+    document.getElementById('download-check-in').addEventListener('click', () => {
+      const status = document.getElementById('download-check-in-status');
+      if (!savedCheckIn) {
+        status.textContent = 'No saved check-in is available to download.';
+        return;
+      }
+      try {
+        downloadCsv(checkInsCsv([savedCheckIn], true), 'check-in.csv');
+        status.textContent = 'Download started. Your check-in is also saved on this device.';
+      } catch (error) {
+        console.error('Unable to download check-in:', error);
+        status.textContent = 'Could not download the check-in. It is still saved on this device.';
+      }
+    });
     document.getElementById('close-thanks').addEventListener('click', () => {
       if (speechSupported) window.speechSynthesis.cancel();
       window.close();
