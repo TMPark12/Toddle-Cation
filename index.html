@@ -17,6 +17,7 @@
     <header class="topbar">
       <div class="brand"><img class="brand-mark" src="./icons/icon-180.png" alt=""> Toddle-Cation</div>
       <div class="header-actions">
+        <button class="help-button" id="open-help" type="button"><span aria-hidden="true">?</span> Help</button>
         <button class="install-button" id="install-button" type="button" aria-label="Install Toddle-Cation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 17v3h14v-3"/></svg><span>Install app</span></button>
         <div class="step"><span id="step-text">1 of 3</span><span class="step-dots" aria-hidden="true"><span id="dot-one" class="active"></span><span id="dot-two"></span><span id="dot-three"></span></span></div>
       </div>
@@ -75,7 +76,8 @@
           <h1 id="notes-heading" tabindex="-1">Anything else to note?</h1>
           <p class="subtitle">Device owner notes are saved with this check-in and included in the CSV export.</p>
           <label for="owner-notes">Device owner notes (optional)</label>
-          <textarea id="owner-notes" maxlength="1000" rows="6"></textarea>
+          <textarea id="owner-notes" maxlength="1000" rows="6" aria-describedby="notes-keyboard-hint"></textarea>
+          <p class="notes-keyboard-hint" id="notes-keyboard-hint">Press Enter to continue to save, or Shift+Enter for a new line.</p>
           <div class="notes-actions">
             <button class="back" id="back-to-colors" type="button">Back to colors</button>
             <div class="notes-continue-actions">
@@ -88,6 +90,61 @@
     </main>
     <footer><button class="history-button" id="open-history" type="button">Saved check-ins</button><br>Made for little feelings and big conversations.</footer>
   </div>
+  <dialog class="detail-dialog" id="demo-invitation" aria-labelledby="demo-invitation-heading">
+    <h2 id="demo-invitation-heading">Welcome to Toddle-Cation</h2>
+    <p>Would you like a guided demo? It won't save a check-in or request your location.</p>
+    <button class="close-thanks" id="invite-demo" type="button">Start demo</button>
+    <button class="dialog-secondary" id="dismiss-demo" type="button">Not now</button>
+  </dialog>
+  <dialog class="detail-dialog" id="help-dialog" aria-labelledby="help-heading">
+    <h2 id="help-heading">How to use Toddle-Cation</h2>
+    <p>Explore a guided demo without saving a check-in or sharing your location.</p>
+    <button class="close-thanks" id="start-demo" type="button">Start demo</button>
+    <p>For a copy to keep, choose “Save as PDF” in your device's print options, if available.</p>
+    <button class="dialog-secondary" id="help-print" type="button">Print or save as PDF</button>
+    <button class="dialog-secondary" id="close-help" type="button">Done</button>
+  </dialog>
+  <dialog class="detail-dialog demo-dialog" id="demo-dialog" aria-labelledby="demo-heading">
+    <h2 id="demo-heading">Toddle-Cation demo</h2>
+    <p class="demo-intro">A practice walkthrough. Nothing you do here is saved or requests your location.</p>
+    <p class="demo-progress" id="demo-progress" aria-live="polite"></p>
+    <div class="demo-steps">
+      <section class="demo-step" id="demo-step-1" aria-labelledby="demo-step-heading-1">
+        <h3 id="demo-step-heading-1" tabindex="-1">1. Pick a feeling</h3>
+        <div class="demo-example" aria-hidden="true"><span>😊 Happy</span><span>😢 Sad</span><span>😠 Mad</span></div>
+        <p>Ask the child to choose the face that matches how they feel. The choices appear in a different order each time the app opens.</p>
+        <p>Use <strong>Hear the question</strong> to play the question again when a device voice is available.</p>
+      </section>
+      <section class="demo-step" id="demo-step-2" aria-labelledby="demo-step-heading-2" hidden>
+        <h3 id="demo-step-heading-2" tabindex="-1">2. Pick a color</h3>
+        <div class="demo-example demo-colors" aria-hidden="true"><span>Red</span><span>Blue</span><span>Yellow</span></div>
+        <p>Choose any color that feels right. Color choices also appear in a different order each time the app opens.</p>
+        <p>Select <strong>Back to feelings</strong> to change the feeling.</p>
+      </section>
+      <section class="demo-step" id="demo-step-3" aria-labelledby="demo-step-heading-3" hidden>
+        <h3 id="demo-step-heading-3" tabindex="-1">3. Add notes or skip</h3>
+        <p>The device owner may add optional notes, or choose <strong>Skip notes and continue</strong>. Choose <strong>Back to colors</strong> to change the color.</p>
+        <p>Notes are included in saved check-ins and CSV exports.</p>
+      </section>
+      <section class="demo-step" id="demo-step-4" aria-labelledby="demo-step-heading-4" hidden>
+        <h3 id="demo-step-heading-4" tabindex="-1">4. Allow location to save</h3>
+        <p>An adult can choose <strong>Allow location and save</strong> and approve the browser's location request. Location is required; if permission is denied or location is unavailable, the check-in is not saved. Choose <strong>Cancel</strong> to return without saving.</p>
+        <p>The feeling, color, notes, date and time, location, and browser/device information are stored in this browser on this device.</p>
+      </section>
+      <section class="demo-step" id="demo-step-5" aria-labelledby="demo-step-heading-5" hidden>
+        <h3 id="demo-step-heading-5" tabindex="-1">5. Download or review</h3>
+        <p>After saving, <strong>Save and Download Check-In</strong> downloads a CSV with the date, time, mood, color, and notes. <strong>Close</strong> keeps the saved check-in on the device without downloading it.</p>
+        <p>Choose <strong>Saved check-ins</strong> to review, export, or delete records. The full export includes location and device information, so keep it private. Records do not sync between devices or browsers.</p>
+      </section>
+    </div>
+    <p class="dialog-status" id="demo-print-status" role="status" aria-live="polite"></p>
+    <div class="demo-controls">
+      <button class="dialog-secondary" id="demo-back" type="button">Back</button>
+      <button class="close-thanks" id="demo-next" type="button">Next</button>
+      <button class="dialog-secondary" id="demo-print" type="button">Print or save as PDF</button>
+      <button class="dialog-secondary" id="demo-close" type="button">Close demo</button>
+    </div>
+  </dialog>
   <dialog class="detail-dialog" id="location-dialog" aria-labelledby="location-heading" aria-describedby="location-description">
     <h2 id="location-heading">Save this check-in?</h2>
     <p id="location-description">An adult can allow location to save the feeling, color, notes, local date and time, device location, and browser/device information on this device. Location is required to save.</p>
@@ -157,6 +214,69 @@
     let locationRequest = 0;
     let installLocationRequest = 0;
     let savingCheckIn = false;
+
+    const helpDialog = document.getElementById('help-dialog');
+    const demoInvitation = document.getElementById('demo-invitation');
+    const demoDialog = document.getElementById('demo-dialog');
+    const demoSteps = [1, 2, 3, 4, 5].map(number => document.getElementById(`demo-step-${number}`));
+    const demoBack = document.getElementById('demo-back');
+    const demoNext = document.getElementById('demo-next');
+    let demoStep = 0;
+    let demoFromInvitation = false;
+
+    function showDemoStep(step) {
+      demoStep = step;
+      demoSteps.forEach((section, index) => { section.hidden = index !== step; });
+      document.getElementById('demo-progress').textContent = `Step ${step + 1} of ${demoSteps.length}`;
+      demoBack.disabled = step === 0;
+      demoNext.hidden = step === demoSteps.length - 1;
+      if (demoDialog.open) document.getElementById(`demo-step-heading-${step + 1}`).focus();
+    }
+
+    document.getElementById('open-help').addEventListener('click', () => helpDialog.showModal());
+    document.getElementById('close-help').addEventListener('click', () => helpDialog.close());
+    function openDemo() {
+      if (helpDialog.open) helpDialog.close();
+      showDemoStep(0);
+      document.getElementById('demo-print-status').textContent = '';
+      demoDialog.showModal();
+      document.body.classList.toggle('demo-open', true);
+    }
+    function printDemo() {
+      if (typeof window.print !== 'function') {
+        document.getElementById('demo-print-status').textContent = 'Printing is unavailable in this browser.';
+        return;
+      }
+      window.print();
+    }
+    document.getElementById('start-demo').addEventListener('click', openDemo);
+    document.getElementById('invite-demo').addEventListener('click', () => {
+      demoInvitation.close();
+      demoFromInvitation = true;
+      openDemo();
+    });
+    document.getElementById('dismiss-demo').addEventListener('click', () => {
+      demoInvitation.close();
+      speak('How do you feel?');
+    });
+    demoInvitation.addEventListener('cancel', () => speak('How do you feel?'));
+    document.getElementById('help-print').addEventListener('click', () => {
+      openDemo();
+      printDemo();
+    });
+    demoBack.addEventListener('click', () => showDemoStep(demoStep - 1));
+    demoNext.addEventListener('click', () => showDemoStep(demoStep + 1));
+    document.getElementById('demo-print').addEventListener('click', printDemo);
+    document.getElementById('demo-close').addEventListener('click', () => demoDialog.close());
+    demoDialog.addEventListener('close', () => {
+      document.body.classList.toggle('demo-open', false);
+      if (demoFromInvitation) {
+        demoFromInvitation = false;
+        speak('How do you feel?');
+      } else {
+        helpDialog.showModal();
+      }
+    });
 
     const isInstalled = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
     if (isInstalled) {
@@ -577,6 +697,11 @@
     }
     document.getElementById('continue-to-save').addEventListener('click', () => continueToSave(true));
     document.getElementById('skip-notes').addEventListener('click', () => continueToSave(false));
+    notesScreen.addEventListener('keydown', event => {
+      if (event.key !== 'Enter' || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey || event.isComposing || event.target.closest('button')) return;
+      event.preventDefault();
+      document.getElementById('continue-to-save').click();
+    });
     document.getElementById('back').addEventListener('click', () => showScreen(1));
     document.getElementById('thank-message').addEventListener('click', () => speak('Thank you!'));
     document.getElementById('download-check-in').addEventListener('click', () => {
@@ -602,6 +727,19 @@
       document.getElementById('closed-heading').focus();
     });
     window.addEventListener('load', () => {
+      if (isInstalled) {
+        try {
+          if (!localStorage.getItem('toddle-cation-demo-invited')) {
+            localStorage.setItem('toddle-cation-demo-invited', 'yes');
+            demoInvitation.showModal();
+            return;
+          }
+        } catch (error) {
+          console.error('Unable to remember demo invitation:', error);
+          demoInvitation.showModal();
+          return;
+        }
+      }
       if (!isInstalled) {
         try {
           if (!sessionStorage.getItem('toddle-cation-install-invited')) {

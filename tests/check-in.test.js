@@ -53,7 +53,7 @@ function createApp(options = {}) {
   colorChoices.forEach(choice => colors.appendChild(choice));
   const sound = element();
   const handlers = {};
-  const storage = new Map();
+  const storage = options.storageValues || new Map();
   const records = [];
   const metadata = new Map();
   if (options.legacy) storage.set('toddle-cation-check-ins', JSON.stringify(options.legacy));
@@ -75,6 +75,7 @@ function createApp(options = {}) {
     location: { reload() { if (options.onReload) options.onReload(); } },
     scrollTo() {}, close() {}, confirm() { return true; }
   };
+  if (options.onPrint) window.print = options.onPrint;
   if (options.showDirectoryPicker) window.showDirectoryPicker = options.showDirectoryPicker;
   const database = {
     createObjectStore() {},
@@ -132,6 +133,7 @@ function createApp(options = {}) {
   const URL = { createObjectURL(blob) { if (options.downloadError) throw new Error('Download unavailable'); downloads.push(blob); return 'blob:download'; }, revokeObjectURL() {} };
   const Blob = globalThis.Blob;
   const document = {
+    body: element(),
     getElementById(id) { assert(elements.has(id), `Missing ${id}`); return elements.get(id); },
     querySelector(selector) { return { '.feelings': feelings, '.colors': colors }[selector] || null; },
     querySelectorAll(selector) { return { '.feeling-choice': feelingChoices, '.color-choice': colorChoices, '.sound': [sound] }[selector]; },
@@ -163,6 +165,86 @@ function position() {
   return { coords: { latitude: 42.12, longitude: -71.34, accuracy: 10 } };
 }
 
+test('offers the demo on first installed launch and not on later launches or browser visits', () => {
+  const storageValues = new Map();
+  const browser = createApp({ storageValues });
+  browser.handlers.load();
+  assert.equal(browser.elements.get('demo-invitation').open, undefined);
+  const installed = createApp({ storageValues, standalone: true });
+  installed.handlers.load();
+  assert.equal(installed.elements.get('demo-invitation').open, true);
+  assert.equal(installed.elements.get('install-invitation').open, undefined);
+  installed.elements.get('dismiss-demo').click();
+  assert.equal(installed.elements.get('demo-invitation').open, false);
+  const reopened = createApp({ storageValues, standalone: true });
+  reopened.handlers.load();
+  assert.equal(reopened.elements.get('demo-invitation').open, undefined);
+});
+
+test('first-launch demo returns to the check-in without reopening help', () => {
+  const app = createApp({ standalone: true });
+  app.handlers.load();
+  app.elements.get('invite-demo').click();
+  assert.equal(app.elements.get('demo-invitation').open, false);
+  assert.equal(app.elements.get('demo-dialog').open, true);
+  assert.equal(app.getRequest(), undefined);
+  app.elements.get('demo-close').click();
+  assert.equal(app.elements.get('help-dialog').open, undefined);
+  assert.equal(app.elements.get('feelings-screen').hidden, false);
+  app.elements.get('open-help').click();
+  assert.equal(app.elements.get('help-dialog').open, true);
+});
+
+test('demo navigation leaves an unfinished check-in intact and does not request location', async () => {
+  const app = createApp();
+  app.feeling.click();
+  app.color.click();
+  app.elements.get('owner-notes').value = 'A note in progress';
+  app.elements.get('open-help').click();
+  app.elements.get('start-demo').click();
+  assert.equal(app.elements.get('help-dialog').open, false);
+  assert.equal(app.elements.get('demo-dialog').open, true);
+  assert.equal(app.elements.get('demo-back').disabled, true);
+  for (let step = 2; step <= 5; step++) {
+    app.elements.get('demo-next').click();
+    assert.equal(app.elements.get(`demo-step-${step}`).hidden, false);
+    assert.equal(app.elements.get(`demo-step-${step - 1}`).hidden, true);
+  }
+  assert.equal(app.elements.get('demo-next').hidden, true);
+  app.elements.get('demo-back').click();
+  assert.equal(app.elements.get('demo-step-4').hidden, false);
+  assert.equal(app.getRequest(), undefined);
+  assert.equal(app.records.length, 0);
+  app.elements.get('demo-close').click();
+  assert.equal(app.elements.get('help-dialog').open, true);
+  app.elements.get('close-help').click();
+  assert.equal(app.elements.get('notes-screen').hidden, false);
+  app.elements.get('continue-to-save').click();
+  app.elements.get('save-check-in').click();
+  app.getRequest().success(position());
+  await flush();
+  assert.equal(app.records[0].feeling, 'Happy');
+  assert.equal(app.records[0].color, 'Blue');
+  assert.equal(app.records[0].notes, 'A note in progress');
+});
+
+test('help and demo offer printing and report when printing is unavailable', () => {
+  let printCalls = 0;
+  const app = createApp({ onPrint: () => { printCalls++; } });
+  app.elements.get('open-help').click();
+  app.elements.get('help-print').click();
+  assert.equal(app.elements.get('demo-dialog').open, true);
+  assert.equal(printCalls, 1);
+  app.elements.get('demo-print').click();
+  assert.equal(printCalls, 2);
+  assert.equal(app.getRequest(), undefined);
+
+  const unavailable = createApp();
+  unavailable.elements.get('open-help').click();
+  unavailable.elements.get('help-print').click();
+  assert.match(unavailable.elements.get('demo-print-status').textContent, /printing is unavailable/i);
+});
+
 test('shuffles the feeling choices on load while keeping each emoji paired with its label', () => {
   const app = createApp();
   assert.deepEqual(app.feelingOrder, ['Sad', 'Mad', 'Happy']);
@@ -187,6 +269,38 @@ test('collects optional device owner notes on a third step before requesting loc
   app.elements.get('continue-to-save').click();
   assert.equal(app.elements.get('location-dialog').open, true);
   assert.equal(app.elements.get('owner-notes').value, '');
+});
+
+test('Enter on the notes page continues to the save confirmation with the notes', async () => {
+  const app = createApp();
+  app.feeling.click();
+  app.color.click();
+  app.elements.get('owner-notes').value = 'Keyboard note';
+  let prevented = false;
+  app.elements.get('notes-screen').events.keydown({
+    key: 'Enter', target: { closest() { return null; } },
+    preventDefault() { prevented = true; }
+  });
+  assert.equal(prevented, true);
+  assert.equal(app.elements.get('location-dialog').open, true);
+  assert.equal(app.records.length, 0);
+  app.elements.get('save-check-in').click();
+  app.getRequest().success(position());
+  await flush();
+  assert.equal(app.records[0].notes, 'Keyboard note');
+});
+
+test('notes keyboard shortcut does not interfere with new lines, composing, or buttons', () => {
+  const app = createApp();
+  app.feeling.click();
+  app.color.click();
+  const handleKey = app.elements.get('notes-screen').events.keydown;
+  for (const props of [{ shiftKey: true }, { isComposing: true }, { target: { closest() { return {}; } } }, { key: 'Escape' }]) {
+    let prevented = false;
+    handleKey({ key: 'Enter', target: { closest() { return null; } }, ...props, preventDefault() { prevented = true; } });
+    assert.equal(prevented, false);
+    assert.equal(app.elements.get('location-dialog').open, undefined);
+  }
 });
 
 test('skipping notes continues to save with an empty notes field', async () => {
